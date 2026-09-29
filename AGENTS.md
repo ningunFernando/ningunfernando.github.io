@@ -1,3 +1,13 @@
+## Contexto del proyecto (léelo primero)
+
+Este repositorio es el portafolio web de «ningunfernando» y vive dentro de un proyecto mayor (`../`). Antes de trabajar:
+
+1. Lee `../AGENTS.md`: reglas obligatorias (no suponer, responder en español, cerrar con 👍🏼 y documentar al terminar).
+2. Lee `../docs/roadmap.md`: estado actual, siguiente paso y método de trabajo.
+3. Lee `../docs/portafolio-web.md`: decisiones de diseño y técnicas.
+
+Método en este código: el agente escribe el código en el chat en pasos pequeños, el usuario lo teclea y el agente revisa lo que hay en los archivos. El agente no crea ni edita archivos del sitio sin permiso explícito ni hace commits salvo que se lo pidan.
+
 ## Development
 
 When starting the dev server, use background mode:
