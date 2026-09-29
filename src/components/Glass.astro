@@ -16,6 +16,8 @@
         --ch2: calc(var(--ch) - 0.586px);
         position: relative;
         background: rgb(255 255 255 / 0.26);
+        /* el desenfoque va aquí: en un hijo, este clip-path no le dejaría ver la página */
+        backdrop-filter: blur(22px) saturate(1.5);
         clip-path: polygon(
             0 0,
             calc(100% - var(--ch)) 0,
