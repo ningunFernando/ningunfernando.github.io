@@ -14,7 +14,7 @@
 
     /* familias */
     --ff: var(--font-space-grotesk);
-     --mono: var(--font-jetbrains-mono);
+    --mono: var(--font-jetbrains-mono);
 
     /* escala 13 · 17 · 22 · 32 · 56 · 96 · 136 px, en rem (base de 16 px) */
     --t-label: 0.8125rem;
@@ -29,6 +29,10 @@
     --ease: cubic-bezier(0.16, 1, 0.3, 1);
     --dur: 0.7s;
 
+    /*Grano*/
+    --grain-opacity: 0.08;
+
     /* capas */
     --z-mask: 100;
+    --z-grain: 110;
 }

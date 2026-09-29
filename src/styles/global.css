@@ -23,6 +23,16 @@ a{
     color: inherit;
 }
 
+body::after{
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-grain);
+    pointer-events: none;
+    background: url("/grano-512.png");
+    opacity: var(--grain-opacity);
+}
+
 @media(prefers-reduced-motion: reduce){
     *{
         animation-duration: 0.01ms !important;
