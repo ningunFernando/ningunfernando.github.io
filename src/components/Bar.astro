@@ -1,0 +1,102 @@
+---
+import Glass from "./Glass.astro";
+
+const links = [
+    { label: "arte", href: "/arte", color: "var(--shading)" },
+    { label: "software", href: "/software", color: "var(--tools)" },
+    { label: "foto", href: "/foto", color: "var(--otros)" },
+];
+
+const current = Astro.url.pathname.replace(/\/$/, "") || "/";
+---
+
+<header class="bar">
+    <Glass>
+        <div class="row">
+            <a class="logo" href="/" aria-label="ningunfernando, inicio">
+                <img src="/isotipo-blanco.svg" alt="" width="27" height="30" />
+            </a>
+            <nav aria-label="Principal">
+                {links.map((link) => (
+                    <a
+                        href={link.href}
+                        style={`--c: ${link.color}`}
+                        aria-current={current == link.href ? "page" : undefined}
+                    >
+                        {link.label}
+                    </a>
+                ))}
+            </nav>
+        </div>
+    </Glass>
+</header>
+
+<style>
+    .bar {
+        position: fixed;
+        top: 1.5rem;
+        left: 2rem;
+        right: 2rem;
+        z-index: var(--z-bar);
+    }
+    .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 3.75rem;
+        padding: 0 1.375rem;
+    }
+    .logo {
+        display: flex;
+    }
+    nav {
+        display: flex;
+        gap: 0.25rem;
+    }
+    nav a {
+        padding: 0.5rem 0.875rem;
+        font-family: var(--mono);
+        font-size: var(--t-body);
+        color: var(--niebla);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    nav a::before {
+        content: "";
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        margin-right: 9px;
+        background: var(--c);
+    }
+
+    nav a:hover,
+    nav a[aria-current="page"] {
+        color: var(--blanco);
+    }
+
+    a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    @media (max-width: 40rem) {
+        .bar {
+            left: 1rem;
+            right: 1rem;
+        }
+        .row {
+            padding: 0 0.75rem;
+        }
+
+        nav a {
+            padding: 0.5rem;
+            font-size: var(--t-label);
+        }
+
+        nav a::before {
+            margin-right: 6px;
+        }
+    }
+</style>

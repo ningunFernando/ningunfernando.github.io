@@ -1,0 +1,53 @@
+---
+// Panel de vidrio con dos esquinas cortadas a 45°.
+// El borde de 1 px es el fondo claro que asoma alrededor de .fill.
+---
+
+<div class="glass">
+    <i class="fill" aria-hidden="true"></i>
+    <div class="content">
+        <slot />
+    </div>
+</div>
+
+<style>
+    .glass {
+        --ch: 18px;
+        --ch2: calc(var(--ch) - 0.586px);
+        position: relative;
+        background: rgb(255 255 255 / 0.26);
+        clip-path: polygon(
+            0 0,
+            calc(100% - var(--ch)) 0,
+            100% var(--ch),
+            100% 100%,
+            var(--ch) 100%,
+            0 calc(100% - var(--ch))
+        );
+    }
+
+    .fill {
+        position: absolute;
+        inset: 1px;
+        background:
+            linear-gradient(
+                135deg,
+                rgb(255 255 255 / 0.16),
+                rgb(255 255 255 / 0) 42%
+            ),
+            rgb(14 14 17 / 0.52);
+        backdrop-filter: blur(22px) saturate(1.5);
+        clip-path: polygon(
+            0 0,
+            calc(100% - var(--ch2)) 0,
+            100% var(--ch2),
+            100% 100%,
+            var(--ch2) 100%,
+            0 calc(100% - var(--ch2))
+        );
+    }
+
+    .content {
+        position: relative;
+    }
+</style>

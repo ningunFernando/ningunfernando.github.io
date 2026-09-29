@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import { Font } from "astro:assets";
+import Bar from "../components/Bar.astro";
 import "../styles/global.css";
 const { title } = Astro.props;
 ---
@@ -11,13 +12,21 @@ const { title } = Astro.props;
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width" />
         <title>{title}</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="theme-color" content="#000000" />
         <Font cssVariable="--font-space-grotesk" preload />
         <Font cssVariable="--font-jetbrains-mono" />
         <ClientRouter />
     </head>
     <body>
         <canvas id="mask" transition:persist></canvas>
-        <slot />
+        <Bar />
+        <main>
+            <slot />
+        </main>
         <script>
             import "../scripts/mask.js";
         </script>
@@ -32,5 +41,8 @@ const { title } = Astro.props;
         height: 100%;
         z-index: var(--z-mask);
         pointer-events: none;
+    }
+    main {
+        padding: 7rem 2rem 4rem;
     }
 </style>
