@@ -1,5 +1,6 @@
 ---
 import { ClientRouter } from "astro:transitions";
+import "../styles/global.css";
 const { title } = Astro.props;
 ---
 
@@ -20,14 +21,7 @@ const { title } = Astro.props;
     </body>
 </html>
 
-<style is:global>
-    html,
-    body {
-        margin: 0;
-        background: #0a0a0a;
-        color: white;
-        font-family: "Space Grotesk", system-ui, sans-serif;
-    }
+<style>
     #mask {
         position: fixed;
         inset: 0;

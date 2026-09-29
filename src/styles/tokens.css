@@ -1,0 +1,34 @@
+:root {
+    /* color */
+    --grafito: #0b0b0c;
+    --panel: #111113;
+    --carbon: #3a3a3f;
+    --gris: #8a8a90;
+    --niebla: #d6d6d9;
+    --blanco: #ffffff;
+    --line: rgb(255 255 255 / 0.14);
+
+    --shading: #8b5cf6;
+    --tools: #3df5a2;
+    --otros: #ffb13b;
+
+    /* familias */
+    --ff: "Space Grotesk", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+    /* escala 13 · 17 · 22 · 32 · 56 · 96 · 136 px, en rem (base de 16 px) */
+    --t-label: 0.8125rem;
+    --t-body: 1.0625rem;
+    --t-lead: 1.375rem;
+    --t-h3: 2rem;
+    --t-h2: clamp(2rem, 3.6vw, 3.5rem);
+    --t-h1: clamp(3.5rem, 6.6vw, 6rem);
+    --t-display: clamp(5rem, 9.4vw, 8.5rem);
+
+    /* movimiento */
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur: 0.7s;
+
+    /* capas */
+    --z-mask: 100;
+}

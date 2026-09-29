@@ -1,0 +1,32 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after{
+    box-sizing: border-box;
+}
+
+html{
+    background: var(--grafito);
+    color: var(--niebla);
+}
+
+body{
+    margin: 0;
+    font-family: var(--ff);
+    font-size: var(--t-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+a{
+    color: inherit;
+}
+
+@media(prefers-reduced-motion: reduce){
+    *{
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
