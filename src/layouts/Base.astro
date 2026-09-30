@@ -7,7 +7,7 @@ const { title } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="es" transition:animate="none">
+<html lang={Astro.currentLocale} transition:animate="none">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width" />

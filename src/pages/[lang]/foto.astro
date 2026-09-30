@@ -1,0 +1,12 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getLangPaths } from "../../i18n/ui.js";
+
+export function getStaticPaths() {
+    return getLangPaths();
+}
+---
+
+<Base title="foto - ningunfernando">
+    <h1>Foto</h1>
+</Base>

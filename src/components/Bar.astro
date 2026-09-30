@@ -1,10 +1,12 @@
 ---
 import Glass from "./Glass.astro";
 
+const lang = Astro.currentLocale;
+
 const links = [
-    { label: "arte", href: "/arte", color: "var(--shading)" },
-    { label: "software", href: "/software", color: "var(--tools)" },
-    { label: "foto", href: "/foto", color: "var(--otros)" },
+    { label: "arte", href: `/${lang}/arte`, color: "var(--shading)" },
+    { label: "software", href: `/${lang}/software`, color: "var(--tools)" },
+    { label: "foto", href: `/${lang}/foto`, color: "var(--otros)" },
 ];
 
 const current = Astro.url.pathname.replace(/\/$/, "") || "/";
@@ -13,7 +15,11 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
 <header class="bar">
     <Glass>
         <div class="row">
-            <a class="logo" href="/" aria-label="ningunfernando, inicio">
+            <a
+                class="logo"
+                href={`/${lang}/`}
+                aria-label="ningunfernando, inicio"
+            >
                 <img src="/isotipo-blanco.svg" alt="" width="27" height="30" />
             </a>
             <nav aria-label="Principal">

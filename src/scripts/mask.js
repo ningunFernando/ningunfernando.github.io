@@ -52,6 +52,8 @@ function resize() {
   gl.viewport(0, 0, w, h);
 }
 
+
+
 function draw() {
   resize();
   gl.useProgram(program);
@@ -68,10 +70,10 @@ draw();
 window.addEventListener('resize', draw);
 
 const COLORS = {
-  '/': '#f5f5f5',
-  '/arte': '#8B5CF6',
-  '/software': '#3DF5A2',
-  '/foto': '#FFB13B',
+  hub: '#f5f5f5',
+  arte: '#8B5CF6',
+  software: '#3DF5A2',
+  foto: '#FFB13B',
 }
 
 function hexToRgb(hex) {
@@ -80,8 +82,8 @@ function hexToRgb(hex) {
 }
 
 function colorFor(url){
-  const path = url.pathname.replace(/\/$/, '') || '/';
-  return hexToRgb(COLORS[path] ?? COLORS['/'])
+  const section = url.pathname.split('/')[2];
+  return hexToRgb(COLORS[section] ?? COLORS.hub);
 }
 
 function tween(to, duration) {

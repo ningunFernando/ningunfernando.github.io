@@ -1,19 +1,35 @@
 ---
-import Base from "../layouts/Base.astro";
+import { Font } from "astro:assets";
+import "../styles/global.css";
 ---
 
-<Base title="ningunfernando">
-    <h1>ningunfernando</h1>
-    <nav>
-        <a href="/arte">arte</a>
-        <a href="/software">software</a>
-        <a href="/foto">foto</a>
-    </nav>
-</Base>
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width" />
+        <title>ningunfernando</title>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <Font cssVariable="--font-space-grotesk" />
+    </head>
+    <body>
+        <main>
+            <a href="/es/" lang="es">
+                Español
+            </a>
+            <a href="/en/" lang="en">
+                English
+            </a>
+        </main>
+    </body>
+</html>
 
 <style>
-    nav {
-        display: flex;
-        flex-direction: column;
+    main {
+        min-height: 100vh;
+        display: grid;
+        place-content: center;
+        gap: 1rem;
+        font-size: var(--t-lead);
     }
 </style>
