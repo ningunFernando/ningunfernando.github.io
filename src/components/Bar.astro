@@ -1,12 +1,26 @@
 ---
 import Glass from "./Glass.astro";
+import { useTranslations } from "../i18n/ui.js";
 
 const lang = Astro.currentLocale;
+const t = useTranslations(lang);
 
 const links = [
-    { label: "arte", href: `/${lang}/arte`, color: "var(--shading)" },
-    { label: "software", href: `/${lang}/software`, color: "var(--tools)" },
-    { label: "foto", href: `/${lang}/foto`, color: "var(--otros)" },
+    {
+        label: t("section.arte"),
+        href: `/${lang}/arte`,
+        color: "var(--shading)",
+    },
+    {
+        label: t("section.software"),
+        href: `/${lang}/software`,
+        color: "var(--tools)",
+    },
+    {
+        label: t("section.foto"),
+        href: `/${lang}/foto`,
+        color: "var(--otros)",
+    },
 ];
 
 const current = Astro.url.pathname.replace(/\/$/, "") || "/";
@@ -15,27 +29,52 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
 <header class="bar">
     <Glass>
         <div class="row">
-            <a
-                class="logo"
-                href={`/${lang}/`}
-                aria-label="ningunfernando, inicio"
-            >
+            <a class="logo" href={`/${lang}/`} aria-label={t("nav.home")}>
                 <img src="/isotipo-blanco.svg" alt="" width="27" height="30" />
             </a>
-            <nav aria-label="Principal">
+            <nav class="links" aria-label={t("nav.label")}>
                 {links.map((link) => (
                     <a
                         href={link.href}
                         style={`--c: ${link.color}`}
-                        aria-current={current == link.href ? "page" : undefined}
+                        aria-current={current === link.href ? "page" : undefined}
                     >
                         {link.label}
                     </a>
                 ))}
             </nav>
+            <button class="menu-button" type="button" popovertarget="menu">
+                {t("menu.button")}
+            </button>
         </div>
     </Glass>
+
+    <!-- En móvil la navegación vive en este panel, que abre el botón. -->
+    <div id="menu" class="menu" popover>
+        <Glass>
+            <nav class="links" aria-label={t("nav.label")}>
+                {links.map((link) => (
+                    <a
+                        href={link.href}
+                        style={`--c: ${link.color}`}
+                        aria-current={current === link.href ? "page" : undefined}
+                    >
+                        {link.label}
+                    </a>
+                ))}
+            </nav>
+        </Glass>
+    </div>
 </header>
+
+<script>
+    // El panel abierto queda por encima de todo, incluso de la máscara:
+    // se cierra antes de navegar para que la máscara lo tape.
+    document.addEventListener("astro:before-preparation", () => {
+        const menu = document.getElementById("menu");
+        if (menu?.matches(":popover-open")) menu.hidePopover();
+    });
+</script>
 
 <style>
     .bar {
@@ -45,6 +84,7 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
         right: 2rem;
         z-index: var(--z-bar);
     }
+
     .row {
         display: flex;
         align-items: center;
@@ -52,14 +92,17 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
         height: 3.75rem;
         padding: 0 1.375rem;
     }
+
     .logo {
         display: flex;
     }
-    nav {
+
+    .links {
         display: flex;
         gap: 0.25rem;
     }
-    nav a {
+
+    .links a {
         padding: 0.5rem 0.875rem;
         font-family: var(--mono);
         font-size: var(--t-body);
@@ -68,7 +111,7 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
         white-space: nowrap;
     }
 
-    nav a::before {
+    .links a::before {
         content: "";
         display: inline-block;
         width: 9px;
@@ -77,14 +120,53 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
         background: var(--c);
     }
 
-    nav a:hover,
-    nav a[aria-current="page"] {
+    .links a:hover,
+    .links a[aria-current="page"] {
         color: var(--blanco);
     }
 
-    a:focus-visible {
+    .menu-button {
+        display: none;
+        padding: 0.5rem;
+        border: 0;
+        background: none;
+        font-family: var(--mono);
+        font-size: var(--t-body);
+        color: var(--niebla);
+        cursor: pointer;
+    }
+
+    .menu-button:hover {
+        color: var(--blanco);
+    }
+
+    a:focus-visible,
+    .menu-button:focus-visible {
         outline: 2px solid var(--blanco);
         outline-offset: 2px;
+    }
+
+    /* El navegador da estilos propios a los popover (borde, fondo, centrado):
+       aquí se anulan y el panel se coloca debajo de la barra. */
+    .menu {
+        inset: 5.75rem 1rem auto;
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        overflow: visible;
+    }
+
+    .menu .links {
+        flex-direction: column;
+        padding: 0.5rem;
+    }
+
+    .menu .links a {
+        padding: 0.75rem;
     }
 
     @media (max-width: 40rem) {
@@ -92,17 +174,17 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
             left: 1rem;
             right: 1rem;
         }
+
         .row {
             padding: 0 0.75rem;
         }
 
-        nav a {
-            padding: 0.5rem;
-            font-size: var(--t-label);
+        .row .links {
+            display: none;
         }
 
-        nav a::before {
-            margin-right: 6px;
+        .menu-button {
+            display: block;
         }
     }
 </style>

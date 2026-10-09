@@ -1,12 +1,14 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getLangPaths } from "../../i18n/ui.js";
+import { getLangPaths, useTranslations } from "../../i18n/ui.js";
 
 export function getStaticPaths() {
     return getLangPaths();
 }
+
+const t = useTranslations(Astro.currentLocale);
 ---
 
-<Base title="foto - ningunfernando">
-    <h1>Foto</h1>
+<Base title={`${t("section.foto")} - ningunfernando`}>
+    <h1>{t("section.foto")}</h1>
 </Base>
