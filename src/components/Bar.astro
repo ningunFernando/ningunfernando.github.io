@@ -1,5 +1,6 @@
 ---
 import Glass from "./Glass.astro";
+import LangSwitch from "./LangSwitch.astro";
 import { useTranslations } from "../i18n/ui.js";
 
 const lang = Astro.currentLocale;
@@ -32,24 +33,30 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
             <a class="logo" href={`/${lang}/`} aria-label={t("nav.home")}>
                 <img src="/isotipo-blanco.svg" alt="" width="27" height="30" />
             </a>
-            <nav class="links" aria-label={t("nav.label")}>
-                {links.map((link) => (
-                    <a
-                        href={link.href}
-                        style={`--c: ${link.color}`}
-                        aria-current={current === link.href ? "page" : undefined}
-                    >
-                        {link.label}
-                    </a>
-                ))}
-            </nav>
+            <div class="desktop">
+                <nav class="links" aria-label={t("nav.label")}>
+                    {links.map((link) => (
+                        <a
+                            href={link.href}
+                            style={`--c: ${link.color}`}
+                            aria-current={
+                                current === link.href ? "page" : undefined
+                            }
+                        >
+                            {link.label}
+                        </a>
+                    ))}
+                </nav>
+                <span class="sep" aria-hidden="true"></span>
+                <LangSwitch />
+            </div>
             <button class="menu-button" type="button" popovertarget="menu">
                 {t("menu.button")}
             </button>
         </div>
     </Glass>
 
-    <!-- En móvil la navegación vive en este panel, que abre el botón. -->
+    <!--Mobile Menu-->
     <div id="menu" class="menu" popover>
         <Glass>
             <nav class="links" aria-label={t("nav.label")}>
@@ -57,19 +64,24 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
                     <a
                         href={link.href}
                         style={`--c: ${link.color}`}
-                        aria-current={current === link.href ? "page" : undefined}
+                        aria-current={
+                            current === link.href ? "page" : undefined
+                        }
                     >
                         {link.label}
                     </a>
                 ))}
             </nav>
+            <div class="menu-lang">
+                <LangSwitch />
+            </div>
         </Glass>
     </div>
 </header>
 
 <script>
-    // El panel abierto queda por encima de todo, incluso de la máscara:
-    // se cierra antes de navegar para que la máscara lo tape.
+    // El panel abierto queda por encima de todo
+    // se cierra antes de navegar para que la mascara lo tape.
     document.addEventListener("astro:before-preparation", () => {
         const menu = document.getElementById("menu");
         if (menu?.matches(":popover-open")) menu.hidePopover();
@@ -95,6 +107,18 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
 
     .logo {
         display: flex;
+    }
+
+    .desktop {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .sep {
+        width: 1px;
+        height: 1.5rem;
+        background: var(--line);
     }
 
     .links {
@@ -169,6 +193,12 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
         padding: 0.75rem;
     }
 
+    .menu-lang {
+        margin: 0 0.5rem;
+        padding: 0.5rem 0 0.75rem;
+        border-top: 1px solid var(--line);
+    }
+
     @media (max-width: 40rem) {
         .bar {
             left: 1rem;
@@ -179,7 +209,7 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
             padding: 0 0.75rem;
         }
 
-        .row .links {
+        .desktop {
             display: none;
         }
 

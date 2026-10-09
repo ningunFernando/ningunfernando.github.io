@@ -8,6 +8,7 @@ export const ui = {
     "section.software": "software",
     "section.foto": "foto",
     "menu.button": "menú",
+    "lang.label": "Idioma",
   },
   en: {
     "nav.label": "Main",
@@ -16,6 +17,7 @@ export const ui = {
     "section.software": "software",
     "section.foto": "photo",
     "menu.button": "menu",
+    "lang.label": "Language",
   },
 };
 

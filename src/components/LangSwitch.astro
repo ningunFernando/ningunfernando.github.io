@@ -1,0 +1,65 @@
+---
+import { lenguajes, useTranslations } from "../i18n/ui.js";
+
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+
+const rest = Astro.url.pathname.split("/").slice(2).join("/");
+---
+
+<div class="lang" role="group" aria-label={t("lang.label")}>
+    {lenguajes.map((code) =>
+        code === lang ? (
+            <span aria-current="true">{code.toUpperCase()}</span>
+        ) : (
+            <a href={`/${code}/${rest}`} hreflang={code} lang={code}>
+                {code.toUpperCase()}
+            </a>
+        ),
+    )}
+</div>
+
+<script>
+    document.addEventListener("click", (event) => {
+        if (!(event.target instanceof Element)) return;
+        const link = event.target.closest("a[hreflang]");
+        if (!link) return;
+        try {
+            localStorage.setItem("lang", link.getAttribute("hreflang") ?? "");
+        } catch {}
+    });
+</script>
+
+<style>
+    .lang {
+        display: flex;
+        gap: 0.25rem;
+        font-family: var(--mono);
+        font-size: var;
+    }
+
+    .lang a,
+    .lang span {
+        padding: 0.5rem;
+    }
+
+    .lang a {
+        color: var(--niebla);
+        text-decoration: none;
+    }
+
+    .lang a:hover {
+        color: var(--blanco);
+    }
+
+    .lang span {
+        color: var(--blanco);
+        text-decoration: underline;
+        text-underline-offset: 7px;
+    }
+
+    .lang a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+</style>

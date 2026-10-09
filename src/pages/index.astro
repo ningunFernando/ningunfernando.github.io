@@ -10,6 +10,18 @@ import "../styles/global.css";
         <meta name="viewport" content="width=device-width" />
         <title>ningunfernando</title>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <script>
+            let lang = null;
+            try {
+                lang = localStorage.getItem("lang");
+            } catch {}
+            if (lang !== "es" && lang !== "en") {
+                const browser = (navigator.language || "").toLowerCase();
+                lang = browser.startsWith("es") ? "es" : "en";
+            }
+
+            location.replace(`/${lang}/`);
+        </script>
         <Font cssVariable="--font-space-grotesk" />
     </head>
     <body>
