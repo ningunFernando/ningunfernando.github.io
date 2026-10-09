@@ -12,6 +12,9 @@
     --tools: #3df5a2;
     --otros: #ffb13b;
 
+    /* máscara al volver al hub */
+    --mask-hub: #f5f5f5;
+
     /* familias */
     --ff: var(--font-space-grotesk);
     --mono: var(--font-jetbrains-mono);

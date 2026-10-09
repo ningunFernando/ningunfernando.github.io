@@ -1,10 +1,9 @@
 ---
 import { lenguajes, useTranslations } from "../i18n/ui.js";
+import { translatePath } from "../i18n/routes.js";
 
 const lang = Astro.currentLocale;
 const t = useTranslations(lang);
-
-const rest = Astro.url.pathname.split("/").slice(2).join("/");
 ---
 
 <div class="lang" role="group" aria-label={t("lang.label")}>
@@ -12,7 +11,7 @@ const rest = Astro.url.pathname.split("/").slice(2).join("/");
         code === lang ? (
             <span aria-current="true">{code.toUpperCase()}</span>
         ) : (
-            <a href={`/${code}/${rest}`} hreflang={code} lang={code}>
+            <a href={translatePath(Astro.url.pathname, code)} hreflang={code} lang={code}>
                 {code.toUpperCase()}
             </a>
         ),

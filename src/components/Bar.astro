@@ -2,27 +2,17 @@
 import Glass from "./Glass.astro";
 import LangSwitch from "./LangSwitch.astro";
 import { useTranslations } from "../i18n/ui.js";
+import { sections } from "../i18n/routes.js";
 
 const lang = Astro.currentLocale;
 const t = useTranslations(lang);
 
-const links = [
-    {
-        label: t("section.arte"),
-        href: `/${lang}/arte`,
-        color: "var(--shading)",
-    },
-    {
-        label: t("section.software"),
-        href: `/${lang}/software`,
-        color: "var(--tools)",
-    },
-    {
-        label: t("section.foto"),
-        href: `/${lang}/foto`,
-        color: "var(--otros)",
-    },
-];
+// Un enlace por sección, con la ruta y el texto del idioma actual.
+const links = sections.map((section) => ({
+    label: t(`section.${section.id}`),
+    href: `/${lang}/${section.slug[lang]}`,
+    color: `var(${section.token})`,
+}));
 
 const current = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---

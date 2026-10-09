@@ -1,6 +1,7 @@
 import vertSrc from '../shaders/mask.vert?raw'
 import fragSrc from '../shaders/mask.frag?raw'
 import gsap from 'gsap';
+import { findSection } from '../i18n/routes.js';
 
 const canvas = document.getElementById('mask');
 const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true });
@@ -69,21 +70,17 @@ function draw() {
 draw();
 window.addEventListener('resize', draw);
 
-const COLORS = {
-  hub: '#f5f5f5',
-  arte: '#8B5CF6',
-  software: '#3DF5A2',
-  foto: '#FFB13B',
-}
-
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
-function colorFor(url){
-  const section = url.pathname.split('/')[2];
-  return hexToRgb(COLORS[section] ?? COLORS.hub);
+// El color sale de tokens.css: el de la sección de destino o el del hub.
+function colorFor(url) {
+  const section = findSection(url.pathname);
+  const token = section ? section.token : '--mask-hub';
+  const hex = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return hexToRgb(hex);
 }
 
 function tween(to, duration) {
