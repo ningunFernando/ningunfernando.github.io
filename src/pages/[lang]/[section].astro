@@ -1,14 +1,18 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getLangPaths, useTranslations } from "../../i18n/ui.js";
+import { useTranslations } from "../../i18n/ui.js";
+import { getSectionPaths } from "../../i18n/routes.js";
 
+// Seis páginas: shading, tools y otros/other en cada idioma.
 export function getStaticPaths() {
-    return getLangPaths();
+    return getSectionPaths();
 }
 
+const { id } = Astro.props;
 const t = useTranslations(Astro.currentLocale);
+const name = t(`section.${id}`);
 ---
 
-<Base title={`${t("section.arte")} - ningunfernando`}>
-    <h1>{t("section.arte")}</h1>
+<Base title={`${name} - ningunfernando`}>
+    <h1>{name}</h1>
 </Base>
