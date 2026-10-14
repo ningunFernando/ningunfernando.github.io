@@ -1,4 +1,4 @@
-≤import vertSrc from '../shaders/mask.vert?raw'
+import vertSrc from '../shaders/mask.vert?raw'
 import fragSrc from '../shaders/mask.frag?raw'
 import gsap from 'gsap';
 import { findSection } from '../i18n/routes.js';
@@ -83,7 +83,7 @@ function colorFor(url) {
   return hexToRgb(hex);
 }
 
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 function tween(to, duration) {
   return new Promise((resolve) => {
@@ -120,6 +120,6 @@ document.addEventListener('astro:page-load', async () => {
   draw();
 });
 
-document.addEventListener('visibilitychange', () => { 
-  if(document.hidden) gsap.getTweensOf(state).forEach((t) => t.progress(1)); 
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) gsap.getTweensOf(state).forEach((t) => t.progress(1));
 });
