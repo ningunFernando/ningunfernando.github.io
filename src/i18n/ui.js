@@ -9,6 +9,7 @@ export const ui = {
     "section.otros": "otros",
     "menu.button": "menú",
     "lang.label": "Idioma",
+    "loader.skip": "saltar →",
   },
   en: {
     "nav.label": "Main",
@@ -18,6 +19,7 @@ export const ui = {
     "section.otros": "other",
     "menu.button": "menu",
     "lang.label": "Language",
+    "loader.skip": "skip →",
   },
 };
 
