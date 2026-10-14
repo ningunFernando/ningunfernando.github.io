@@ -3,6 +3,8 @@ import { ClientRouter } from "astro:transitions";
 import { Font } from "astro:assets";
 import Bar from "../components/Bar.astro";
 import "../styles/global.css";
+import Loader from "../components/Loader.astro";
+
 const { title } = Astro.props;
 ---
 
@@ -23,6 +25,7 @@ const { title } = Astro.props;
     </head>
     <body>
         <canvas id="mask" transition:persist></canvas>
+        <Loader />
         <Bar />
         <main>
             <slot />
