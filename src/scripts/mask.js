@@ -1,4 +1,4 @@
-import vertSrc from '../shaders/mask.vert?raw'
+≤import vertSrc from '../shaders/mask.vert?raw'
 import fragSrc from '../shaders/mask.frag?raw'
 import gsap from 'gsap';
 import { findSection } from '../i18n/routes.js';
@@ -83,14 +83,18 @@ function colorFor(url) {
   return hexToRgb(hex);
 }
 
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce');
+
 function tween(to, duration) {
   return new Promise((resolve) => {
     gsap.to(state, {
       progress: to,
       duration,
       ease: 'power2.inOut',
+      overwrite: true,
       onUpdate: draw,
       onComplete: resolve,
+      onInterrupt: resolve,
     });
   });
 }
@@ -98,6 +102,7 @@ function tween(to, duration) {
 let covered = false;
 
 document.addEventListener('astro:before-preparation', (e) => {
+  if (reduceMotion.matches || document.hidden) return;
   const load = e.loader;
   e.loader = async () => {
     state.color = colorFor(e.to);
@@ -110,6 +115,11 @@ document.addEventListener('astro:page-load', async () => {
   if (!covered) return; // ignora la carga inicial
   covered = false;
   await tween(2, 0.7);
+  if (state.progress < 2) return;
   state.progress = 0;
   draw();
+});
+
+document.addEventListener('visibilitychange', () => { 
+  if(document.hidden) gsap.getTweensOf(state).forEach((t) => t.progress(1)); 
 });
