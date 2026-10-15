@@ -9,6 +9,8 @@ uniform float u_yaw;
 uniform float u_pitch;
 uniform float u_gap;
 
+out vec3 v_normal;
+
 mat3 rotateY(float a) {
     float c = cos(a);
     float s = sin(a);
@@ -24,7 +26,7 @@ mat3 rotateX(float a) {
 void main() {
     mat3 view = rotateX(u_pitch) * rotateY(u_yaw);
     vec3 p = view * (a_position + a_normal * u_gap);
-
+    v_normal = view * a_normal;
     vec2 clip = p.xy * u_unit * 2.0 / u_resolution;
     gl_Position = vec4(clip, -p.z * 0.1, 1.0);
 }
