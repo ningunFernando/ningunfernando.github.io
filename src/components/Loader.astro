@@ -4,8 +4,9 @@ const t = useTranslations(Astro.currentLocale);
 ---
 
 <div id="loader" class="loader" transition:persist>
+    <div class="bg"></div>
     <canvas class="canvas"></canvas>
-    <button class="skip" type="button">
+    <button class="skip" type="button" aria-keyshortcuts="Escape">
         {t("loader.skip")}
     </button>
 </div>
@@ -27,10 +28,16 @@ const t = useTranslations(Astro.currentLocale);
         position: fixed;
         inset: 0;
         z-index: var(--z-loader);
+    }
+
+    .bg {
+        position: absolute;
+        inset: 0;
         background: var(--grafito);
     }
 
     .canvas {
+        position: relative;
         display: block;
         width: 100%;
         height: 100%;

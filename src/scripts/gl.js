@@ -20,3 +20,10 @@ export function createProgram(gl, vertSrc, fragSrc) {
   }
   return program;
 }
+
+// Lee un color de tokens.css (#rrggbb) y lo devuelve de 0 a 1, como lo pide WebGL
+export function tokenColor(name) {
+  const hex = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const n = parseInt(hex.slice(1), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}

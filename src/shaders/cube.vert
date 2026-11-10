@@ -8,6 +8,7 @@ uniform float u_unit;
 uniform float u_yaw;
 uniform float u_pitch;
 uniform float u_gap;
+uniform vec3 u_center; // punto del cubo que queda en el centro de la pantalla
 
 out vec3 v_normal;
 
@@ -25,7 +26,7 @@ mat3 rotateX(float a) {
 
 void main() {
     mat3 view = rotateX(u_pitch) * rotateY(u_yaw);
-    vec3 p = view * (a_position + a_normal * u_gap);
+    vec3 p = view * (a_position + a_normal * u_gap - u_center);
     v_normal = view * a_normal;
     vec2 clip = p.xy * u_unit * 2.0 / u_resolution;
     gl_Position = vec4(clip, -p.z * 0.1, 1.0);
