@@ -1,0 +1,182 @@
+---
+title: "Cell shader: bands, clean shadows and outline"
+description: "How I built the project's toon lighting in URP: from banded half-Lambert to shadows without jagged edges, additional lights with Forward+ and a constant-width outline."
+date: 2026-11-10
+section: shading
+piece: cell-shader
+tags: [unity, urp, shader graph, hlsl]
+---
+
+import ShaderViewer from '../../../components/ShaderViewer.astro';
+import NodeFigure from '../../../components/NodeFigure.astro';
+
+## Goal
+
+The project's toon lighting lives in a single Sub Graph, `SbG_ToonLighting`, used by the character material (`SG_ToonShadingV2`) and the floor material (`SG_ToonFloor`). Each parent graph only computes its albedo or its masks; the lighting is the same for all of them, so one tweak shows up across the whole project at once.
+
+The lighting functions are written in HLSL (`ToonLighting.hlsl`) and Shader Graph calls them through Custom Function nodes. By the end of the post the lighting has adjustable bands, a clean shadow, specular, rim, additional lights and a constant-width outline.
+
+<ShaderViewer shader="toon" label="Interactive cell shader viewer: move the cursor to move the light" />
+
+The viewer is a WebGL port of that lighting with the base material values (`M_ToonBasic`), on a sphere and without a shadow map. Move the light with the cursor and change the bands.
+
+## Banded lighting
+
+It all starts with how much light each pixel receives. Instead of plain `N·L` I use half-Lambert, `N·L × 0.5 + 0.5`: it goes from 0 to 1 across the whole surface, so the side facing away from the light still has values to work with.
+
+For the bands, that value is multiplied by the band count and split into an integer part and a fraction. The integer part is the band; the fraction decides the jump to the next one with a `smoothstep` around 0.5, and the width of that `smoothstep` is the edge softness:
+
+```hlsl
+float x = saturate(value + offset);
+float count = max(bands, 1.0);
+float scaled = x * count;
+float band = floor(scaled);
+float edge = max(softness, 0.0001);
+float blend = smoothstep(0.5 - edge, 0.5 + edge, scaled - band);
+return saturate((band + blend) / count);
+```
+
+`offset` moves every cut at once, toward the light or toward the shadow. With a single band, the cut lands exactly at `N·L = 0`. The same function also takes a ramp texture, grayscale or color, for when the art calls for steps that aren't evenly spaced.
+
+<NodeFigure
+  caption="The light value, from the normal to the bands."
+  nodes={[
+    { label: "Normal (World)" },
+    { label: "Main Light", detail: "direction" },
+    { label: "Dot Product" },
+    { label: "Half Lambert", detail: "× 0.5 + 0.5", new: true },
+    { label: "ToonRamp", detail: "bands · softness · offset", new: true },
+  ]}
+/>
+
+## The shadow color
+
+The ramp returns a number from 0 to 1, the *shade*. It blends from the shadow color to the light color:
+
+```hlsl
+Light = lerp(ShadowColor, LightColor, Out);
+```
+
+That way the shadow can have its own color instead of just a darker gray: in the base material it's violet. The ambient term is added on top (`SampleSH` with the normal, times `AmbientStrength`) and everything is multiplied by the albedo. Bending the ambient normal upward (`Flatness`) makes it flatter and more toon-like: with `Flatness` at 1, the whole surface gets the same ambient.
+
+<NodeFigure
+  caption="From the shade to the diffuse color."
+  nodes={[
+    { label: "ToonRamp", detail: "shade" },
+    { label: "Lerp", detail: "ShadowColor → light", new: true },
+    { label: "Add", detail: "ambient × strength", new: true },
+    { label: "Multiply", detail: "albedo", new: true },
+    { label: "Base Color" },
+  ]}
+/>
+
+## Shadows without jagged edges
+
+With real-time shadows, the temptation is to multiply half-Lambert by the shadow attenuation and feed that into the ramp. The problem is that the shadow map has texels: near a band threshold, each texel shifts it a little and the edge comes out jagged.
+
+The fix was to compute the light ramp and the shadow ramp separately, and combine them with `min`:
+
+```hlsl
+float atten = ToonShadowAtten(value, shadowAtten, terminatorFade);
+if (shadowMode > 1.5)
+    return ToonRamp(value * atten, rampMap, bands, softness, offset, rampMode);
+float lightShade = ToonRamp(value, rampMap, bands, softness, offset, rampMode);
+return min(lightShade, ToonShadowShade(atten, shadowMode, shadowSoftness));
+```
+
+There are three modes: **Toon** (the shadow gets a hard edge with its own softness), **Smooth** (the attenuation as is) and **Banded** (the shadow goes into the ramp, the first branch in the code).
+
+The second detail is at the terminator. Where the light is already darkening the surface, self-shadowing only adds jagged edges, so it fades out there:
+
+```hlsl
+float nDotL = value * 2.0 - 1.0;
+float fade = smoothstep(0.0, max(terminatorFade, 0.0001), nDotL);
+return lerp(1.0, saturate(shadowAtten), fade);
+```
+
+A `terminatorFade` of around 0.2 worked well.
+
+<NodeFigure
+  caption="The shadow takes its own path and joins at the end with min."
+  nodes={[
+    { label: "Main Light", detail: "shadowAtten" },
+    { label: "ToonShadowAtten", detail: "fades at the terminator", new: true },
+    { label: "ToonShadowShade", detail: "Toon · Smooth", new: true },
+    { label: "Min", detail: "with the light ramp", new: true },
+  ]}
+/>
+
+## Specular and rim
+
+The highlight is a `smoothstep` over `N·H` with the threshold at `1 − size²`, multiplied by the *shade* so it never shows up in the shadow:
+
+```hlsl
+float3 halfVector = SafeNormalize(lightDirection + view);
+float nDotH = saturate(dot(normal, halfVector));
+float threshold = 1.0 - size * size;
+float edge = max(softness, 0.0001) * (1.0 - threshold) + 0.0001;
+return smoothstep(threshold - edge, threshold + edge, nDotH);
+```
+
+Squaring the size spreads the control more evenly across small highlights, which are the ones used most. The rim is another `smoothstep`, over `1 − N·V`: a hard edge on the silhouette, with its own color and size.
+
+## Additional lights with Forward+
+
+The renderer uses Forward+. There, `GetAdditionalLightsCount()` doesn't iterate the lights and a regular `for` loop sees none of them. You need URP's loop, and the macro expects a local variable named exactly `inputData`:
+
+```hlsl
+InputData inputData = (InputData)0;
+inputData.positionWS = WorldPos;
+inputData.normalizedScreenSpaceUV = ScreenUV;
+uint pixelLightCount = GetAdditionalLightsCount();
+
+LIGHT_LOOP_BEGIN(pixelLightCount)
+    Light light = GetAdditionalLight(lightIndex, WorldPos, shadowMask);
+    ToonAccumulateLight(light, normal, view, /* … */ Diffuse, Specular);
+LIGHT_LOOP_END
+```
+
+Before that loop there's another one for additional directional lights (`USE_CLUSTER_LIGHT_LOOP`). Two more details: `GetAdditionalLight` with two arguments doesn't compute shadows, while the three-argument version (`shadowMask`) does; and every light goes through the same ramp, specular and shadow as the main one, with its distance attenuation stepped as well (`AttenuationBands`).
+
+## Inverted-hull outline
+
+The outline is a second pass of the mesh with `Cull Front`, pushed outward. To keep the width the same in pixels at any distance, the extrusion happens in clip space:
+
+```hlsl
+float4 positionCS = TransformObjectToHClip(input.positionOS.xyz);
+float3 normalWS = TransformObjectToWorldNormal(OutlineHullNormalOS(input));
+float2 normalCS = TransformWorldToHClipDir(normalWS).xy;
+
+float2 directionPx = normalCS * _ScreenParams.xy;
+directionPx *= rsqrt(max(dot(directionPx, directionPx), 1e-8));
+positionCS.xy += directionPx * (_OutlineWidth * 2.0 / _ScreenParams.xy) * positionCS.w;
+```
+
+The direction is converted to pixels and normalized there, so the outline is equally wide horizontally and vertically at any screen aspect ratio. Multiplying by `positionCS.w` undoes the perspective divide that comes afterward.
+
+With hard normals (a cube, low poly) the hull splits open at the edges. The fix was baking smoothed normals, the angle-weighted average of the faces sharing a position, into a UV channel. They're stored in tangent space so they follow a skinned mesh correctly:
+
+```hlsl
+float3 bitangentOS = cross(input.normalOS, input.tangentOS.xyz) * input.tangentOS.w;
+return input.tangentOS.xyz * input.smoothNormalTS.x
+     + bitangentOS * input.smoothNormalTS.y
+     + input.normalOS * input.smoothNormalTS.z;
+```
+
+For several objects to share a single silhouette, each group writes a color-less stencil mask and the hull is only drawn where the stencil doesn't match.
+
+## Parameters
+
+The values of the base material (`M_ToonBasic`) and the character outline (`M_OutlineHullPlayer`):
+
+| parameter | what it does | value |
+| --- | --- | --- |
+| `Bands` | number of bands | 4.03 |
+| `Softness` | softness of each band edge | 0.167 |
+| `Offset` | moves every cut | 0.122 |
+| `ShadowColor` | shadow color | `#3900A4` |
+| `SpecularSize` | highlight size | 0.132 |
+| `SpecularMask` | highlight strength | 0.387 |
+| `RimSize` | rim width | 0.042 |
+| `AmbientFlatness` | how flat the ambient is | 1 |
+| `_OutlineWidth` | outline width, in pixels | 4 |

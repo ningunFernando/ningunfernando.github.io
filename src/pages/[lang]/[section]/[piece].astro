@@ -5,7 +5,8 @@ import Tag from "../../../components/Tag.astro";
 import Button from "../../../components/Button.astro";
 import ShaderViewer from "../../../components/ShaderViewer.astro";
 import { useTranslations } from "../../../i18n/ui.js";
-import { getPiecePaths } from "../../../lib/pieces.js";
+import { getPiecePaths, parseId } from "../../../lib/pieces.js";
+import { getBreakdown, noteUrl } from "../../../lib/notes.js";
 
 // Una página por pieza e idioma: /es/shading/cell-shader, /en/shading/cell-shader…
 export async function getStaticPaths() {
@@ -19,6 +20,7 @@ const data = entry.data;
 const sectionName = t(`section.${section.id}`);
 const sectionHref = `/${lang}/${section.slug[lang]}`;
 const chips = [data.engine, data.year, data.role].filter(Boolean);
+const breakdown = await getBreakdown(lang, parseId(entry.id).slug);
 ---
 
 <Base title={`${data.title} - ningunfernando`}>
@@ -64,9 +66,20 @@ const chips = [data.engine, data.year, data.role].filter(Boolean);
 
             <Glass>
                 <section class="depth">
-                    <small>5 min<span>{t("piece.breakdown")}</span></small>
+                    <small>{breakdown ? breakdown.minutes : 5} min<span>{t("piece.breakdown")}</span></small>
                     <h2>{t("piece.breakdownTitle")}</h2>
-                    <p>{t("piece.breakdownSoon")}</p>
+                    {
+                        breakdown ? (
+                            <>
+                                <p lang={breakdown.fallback ? breakdown.lang : undefined}>
+                                    {breakdown.entry.data.description}
+                                </p>
+                                <a class="cta" href={noteUrl(breakdown, lang)}>{t("piece.readPost")}</a>
+                            </>
+                        ) : (
+                            <p>{t("piece.breakdownSoon")}</p>
+                        )
+                    }
                 </section>
             </Glass>
 
@@ -228,6 +241,23 @@ const chips = [data.engine, data.year, data.role].filter(Boolean);
     .lines dd {
         margin: 0.125rem 0 0;
         color: var(--niebla);
+    }
+
+    .cta {
+        display: inline-block;
+        margin-top: 1.25rem;
+        font-family: var(--mono);
+        color: var(--blanco);
+        text-underline-offset: 0.2em;
+    }
+
+    .cta:hover {
+        color: var(--c);
+    }
+
+    .cta:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
     }
 
     .links {

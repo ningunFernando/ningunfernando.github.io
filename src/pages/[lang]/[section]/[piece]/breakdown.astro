@@ -1,0 +1,33 @@
+---
+import Base from "../../../../layouts/Base.astro";
+import Post from "../../../../components/Post.astro";
+import { lenguajes, useTranslations } from "../../../../i18n/ui.js";
+import { sections } from "../../../../i18n/routes.js";
+import { getNotes } from "../../../../lib/notes.js";
+
+// El breakdown de cada pieza, en cada idioma: /es/shading/cell-shader/breakdown.
+export async function getStaticPaths() {
+    const paths = [];
+    for (const lang of lenguajes) {
+        for (const note of await getNotes(lang)) {
+            const { piece, section: sectionId } = note.entry.data;
+            if (!piece) continue;
+            const section = sections.find((s) => s.id === sectionId);
+            paths.push({
+                params: { lang, section: section.slug[lang], piece },
+                props: { note, section },
+            });
+        }
+    }
+    return paths;
+}
+
+const { note, section } = Astro.props;
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const pieceHref = `/${lang}/${section.slug[lang]}/${note.entry.data.piece}`;
+---
+
+<Base title={`${note.entry.data.title} - ningunfernando`}>
+    <Post note={note} back={{ href: pieceHref, label: t("note.backToPiece") }} />
+</Base>

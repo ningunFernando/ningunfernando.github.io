@@ -4,7 +4,8 @@ import Base from "../../layouts/Base.astro";
 import Tag from "../../components/Tag.astro";
 import { useTranslations } from "../../i18n/ui.js";
 import { getSectionPaths, sections } from "../../i18n/routes.js";
-import { getPieces, pieceUrl } from "../../lib/pieces.js";
+import { getPieces, pieceUrl, parseId } from "../../lib/pieces.js";
+import { getBreakdown } from "../../lib/notes.js";
 
 // Seis páginas: shading, tools y otros/other en cada idioma.
 export function getStaticPaths() {
@@ -17,6 +18,16 @@ const t = useTranslations(lang);
 const name = t(`section.${id}`);
 const section = sections.find((s) => s.id === id);
 const pieces = await getPieces(lang, id);
+
+// Motor · año · minutos del breakdown (si la pieza ya tiene uno).
+const metas = await Promise.all(
+    pieces.map(async (piece) => {
+        const breakdown = await getBreakdown(lang, parseId(piece.id).slug);
+        return [piece.data.engine, piece.data.year, breakdown && `~${breakdown.minutes} min`]
+            .filter(Boolean)
+            .join(" · ");
+    }),
+);
 ---
 
 <Base title={`${name} - ningunfernando`}>
@@ -29,7 +40,7 @@ const pieces = await getPieces(lang, id);
         {
             pieces.length ? (
                 <ul class="list">
-                    {pieces.map((piece) => (
+                    {pieces.map((piece, i) => (
                         <li>
                             <a class="item" href={pieceUrl(piece)}>
                                 <span class="thumb">
@@ -51,11 +62,7 @@ const pieces = await getPieces(lang, id);
                                         ))}
                                     </span>
                                 </span>
-                                <span class="meta">
-                                    {[piece.data.engine, piece.data.year]
-                                        .filter(Boolean)
-                                        .join(" · ")}
-                                </span>
+                                <span class="meta">{metas[i]}</span>
                             </a>
                         </li>
                     ))}

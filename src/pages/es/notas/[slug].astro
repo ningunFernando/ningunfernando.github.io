@@ -1,0 +1,16 @@
+---
+// Notas sueltas (las que no son breakdown de una pieza), en español.
+import Base from "../../../layouts/Base.astro";
+import Post from "../../../components/Post.astro";
+import { getLooseNotePaths } from "../../../lib/notes.js";
+
+export function getStaticPaths() {
+    return getLooseNotePaths("es");
+}
+
+const { note } = Astro.props;
+---
+
+<Base title={`${note.entry.data.title} - ningunfernando`}>
+    <Post note={note} />
+</Base>

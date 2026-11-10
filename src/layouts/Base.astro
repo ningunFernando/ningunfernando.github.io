@@ -7,6 +7,9 @@ import Loader from "../components/Loader.astro";
 
 // full: la página ocupa todo el ancho y alto, sin el margen de main (la intro del inicio).
 const { title, full = false } = Astro.props;
+const lang = Astro.currentLocale;
+// El feed de notas solo existe cuando hay dominio (`site` en astro.config.mjs).
+const rssHref = Astro.site ? new URL(`/${lang}/rss.xml`, Astro.site).href : null;
 ---
 
 <!doctype html>
@@ -20,6 +23,7 @@ const { title, full = false } = Astro.props;
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#000000" />
+        {rssHref && <link rel="alternate" type="application/rss+xml" title="ningunfernando" href={rssHref} />}
         <Font cssVariable="--font-space-grotesk" preload />
         <Font cssVariable="--font-jetbrains-mono" />
         <ClientRouter />

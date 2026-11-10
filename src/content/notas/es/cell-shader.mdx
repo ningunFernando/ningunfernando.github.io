@@ -1,0 +1,182 @@
+---
+title: "Cell shader: bandas, sombras limpias y contorno"
+description: "Cómo armé la iluminación toon del proyecto en URP: de un half-Lambert en bandas a sombras sin dientes, luces adicionales con Forward+ y un contorno de grosor constante."
+date: 2026-11-10
+section: shading
+piece: cell-shader
+tags: [unity, urp, shader graph, hlsl]
+---
+
+import ShaderViewer from '../../../components/ShaderViewer.astro';
+import NodeFigure from '../../../components/NodeFigure.astro';
+
+## Objetivo
+
+La iluminación toon del proyecto vive en un solo Sub Graph, `SbG_ToonLighting`, que usan el material del personaje (`SG_ToonShadingV2`) y el del suelo (`SG_ToonFloor`). Cada grafo padre solo calcula su albedo o sus máscaras; la luz es la misma para todos, así que un ajuste se ve en todo el proyecto a la vez.
+
+Las funciones de luz están en HLSL (`ToonLighting.hlsl`) y Shader Graph las llama con nodos Custom Function. Al final del post la iluminación tiene bandas ajustables, una sombra limpia, especular, rim, luces adicionales y un contorno de grosor constante.
+
+<ShaderViewer shader="toon" label="Visor interactivo del cell shader: mueve el cursor para mover la luz" />
+
+El visor es un port a WebGL de esa iluminación con los valores del material base (`M_ToonBasic`), sobre una esfera y sin shadow map. Mueve la luz con el cursor y cambia las bandas.
+
+## Iluminación en bandas
+
+Todo empieza en cuánta luz recibe cada píxel. En lugar del `N·L` normal uso half-Lambert, `N·L × 0.5 + 0.5`: va de 0 a 1 en toda la superficie, así que la cara que no mira a la luz también tiene valores con los que trabajar.
+
+Para las bandas, ese valor se multiplica por el número de bandas y se separa en parte entera y fracción. La parte entera es la banda; la fracción decide el salto a la siguiente con un `smoothstep` alrededor de 0.5, y el ancho de ese `smoothstep` es la suavidad del borde:
+
+```hlsl
+float x = saturate(value + offset);
+float count = max(bands, 1.0);
+float scaled = x * count;
+float band = floor(scaled);
+float edge = max(softness, 0.0001);
+float blend = smoothstep(0.5 - edge, 0.5 + edge, scaled - band);
+return saturate((band + blend) / count);
+```
+
+`offset` mueve todos los cortes a la vez, hacia la luz o hacia la sombra. Con una sola banda, el corte cae justo en `N·L = 0`. La misma función acepta también una rampa en textura, en escala de grises o en color, para cuando el arte pide escalones que no son iguales entre sí.
+
+<NodeFigure
+  caption="El valor de luz, de la normal a las bandas."
+  nodes={[
+    { label: "Normal (World)" },
+    { label: "Main Light", detail: "dirección" },
+    { label: "Dot Product" },
+    { label: "Half Lambert", detail: "× 0.5 + 0.5", new: true },
+    { label: "ToonRamp", detail: "bandas · suavidad · offset", new: true },
+  ]}
+/>
+
+## El color de la sombra
+
+La rampa devuelve un número de 0 a 1, el *shade*. Con él se mezcla del color de sombra al color de la luz:
+
+```hlsl
+Light = lerp(ShadowColor, LightColor, Out);
+```
+
+Así la sombra puede tener un color propio en lugar de ser un gris más oscuro: en el material base es violeta. A eso se le suma el ambiente (`SampleSH` con la normal, por `AmbientStrength`) y todo se multiplica por el albedo. Mezclar la normal del ambiente hacia arriba (`Flatness`) lo vuelve más plano y más toon: con `Flatness` en 1, toda la superficie recibe el mismo ambiente.
+
+<NodeFigure
+  caption="Del shade al color del difuso."
+  nodes={[
+    { label: "ToonRamp", detail: "shade" },
+    { label: "Lerp", detail: "ShadowColor → luz", new: true },
+    { label: "Add", detail: "ambiente × fuerza", new: true },
+    { label: "Multiply", detail: "albedo", new: true },
+    { label: "Base Color" },
+  ]}
+/>
+
+## Sombras sin dientes
+
+Con sombras en tiempo real, la tentación es multiplicar half-Lambert por la atenuación de la sombra y meter eso en la rampa. El problema es que el shadow map tiene texels: cerca del umbral de una banda, cada texel lo desplaza un poco y el borde sale dentado.
+
+La solución fue calcular la rampa de la luz y la de la sombra por separado, y combinarlas con `min`:
+
+```hlsl
+float atten = ToonShadowAtten(value, shadowAtten, terminatorFade);
+if (shadowMode > 1.5)
+    return ToonRamp(value * atten, rampMap, bands, softness, offset, rampMode);
+float lightShade = ToonRamp(value, rampMap, bands, softness, offset, rampMode);
+return min(lightShade, ToonShadowShade(atten, shadowMode, shadowSoftness));
+```
+
+Hay tres modos: **Toon** (la sombra con un borde duro y su propia suavidad), **Smooth** (la atenuación tal cual) y **Banded** (la sombra entra en la rampa, que es la primera rama del código).
+
+El segundo detalle está en el terminador. Donde la luz ya está oscureciendo la superficie, la auto-sombra solo agrega dientes, así que se desvanece ahí:
+
+```hlsl
+float nDotL = value * 2.0 - 1.0;
+float fade = smoothstep(0.0, max(terminatorFade, 0.0001), nDotL);
+return lerp(1.0, saturate(shadowAtten), fade);
+```
+
+Un `terminatorFade` de alrededor de 0.2 funcionó bien.
+
+<NodeFigure
+  caption="La sombra va por su lado y se junta al final con min."
+  nodes={[
+    { label: "Main Light", detail: "shadowAtten" },
+    { label: "ToonShadowAtten", detail: "se desvanece en el terminador", new: true },
+    { label: "ToonShadowShade", detail: "Toon · Smooth", new: true },
+    { label: "Min", detail: "con la rampa de luz", new: true },
+  ]}
+/>
+
+## Especular y rim
+
+El brillo es un `smoothstep` sobre `N·H` con el umbral en `1 − size²`, y se multiplica por el *shade* para que no aparezca en la sombra:
+
+```hlsl
+float3 halfVector = SafeNormalize(lightDirection + view);
+float nDotH = saturate(dot(normal, halfVector));
+float threshold = 1.0 - size * size;
+float edge = max(softness, 0.0001) * (1.0 - threshold) + 0.0001;
+return smoothstep(threshold - edge, threshold + edge, nDotH);
+```
+
+Con el tamaño al cuadrado, el control se reparte mejor entre los brillos chicos, que son los que más se usan. El rim es otro `smoothstep`, sobre `1 − N·V`: un borde duro en la silueta, con su propio color y tamaño.
+
+## Luces adicionales con Forward+
+
+El renderer usa Forward+. Ahí `GetAdditionalLightsCount()` no recorre las luces y un `for` normal no ve ninguna. Hay que usar el bucle de URP, y la macro necesita una variable local que se llame exactamente `inputData`:
+
+```hlsl
+InputData inputData = (InputData)0;
+inputData.positionWS = WorldPos;
+inputData.normalizedScreenSpaceUV = ScreenUV;
+uint pixelLightCount = GetAdditionalLightsCount();
+
+LIGHT_LOOP_BEGIN(pixelLightCount)
+    Light light = GetAdditionalLight(lightIndex, WorldPos, shadowMask);
+    ToonAccumulateLight(light, normal, view, /* … */ Diffuse, Specular);
+LIGHT_LOOP_END
+```
+
+Antes de ese bucle va otro para las luces direccionales adicionales (`USE_CLUSTER_LIGHT_LOOP`). Dos detalles más: `GetAdditionalLight` con dos argumentos no calcula sombras y con el tercero (`shadowMask`) sí; y cada luz pasa por la misma rampa, especular y sombra que la principal, con su atenuación por distancia también en escalones (`AttenuationBands`).
+
+## Contorno de casco invertido
+
+El contorno es una segunda pasada del mesh con `Cull Front`, extruida hacia afuera. Para que el grosor sea el mismo en píxeles a cualquier distancia, la extrusión se hace en clip space:
+
+```hlsl
+float4 positionCS = TransformObjectToHClip(input.positionOS.xyz);
+float3 normalWS = TransformObjectToWorldNormal(OutlineHullNormalOS(input));
+float2 normalCS = TransformWorldToHClipDir(normalWS).xy;
+
+float2 directionPx = normalCS * _ScreenParams.xy;
+directionPx *= rsqrt(max(dot(directionPx, directionPx), 1e-8));
+positionCS.xy += directionPx * (_OutlineWidth * 2.0 / _ScreenParams.xy) * positionCS.w;
+```
+
+La dirección se pasa a píxeles y se normaliza ahí, así el contorno mide lo mismo a lo ancho y a lo alto en cualquier proporción de pantalla. Multiplicar por `positionCS.w` deshace la división de perspectiva que viene después.
+
+Con normales duras (un cubo, un low poly) el casco se abre en las aristas. La solución fue hornear normales suavizadas, el promedio ponderado por ángulo de las caras que comparten posición, en un canal UV. Se guardan en tangent space para que sigan bien a un mesh con skinning:
+
+```hlsl
+float3 bitangentOS = cross(input.normalOS, input.tangentOS.xyz) * input.tangentOS.w;
+return input.tangentOS.xyz * input.smoothNormalTS.x
+     + bitangentOS * input.smoothNormalTS.y
+     + input.normalOS * input.smoothNormalTS.z;
+```
+
+Para que varios objetos compartan una sola silueta, cada grupo escribe una máscara de stencil sin color y el casco solo se dibuja donde el stencil no coincide.
+
+## Parámetros
+
+Los valores del material base (`M_ToonBasic`) y del contorno del personaje (`M_OutlineHullPlayer`):
+
+| parámetro | qué hace | valor |
+| --- | --- | --- |
+| `Bands` | número de bandas | 4.03 |
+| `Softness` | suavidad del borde de cada banda | 0.167 |
+| `Offset` | mueve todos los cortes | 0.122 |
+| `ShadowColor` | color de la sombra | `#3900A4` |
+| `SpecularSize` | tamaño del brillo | 0.132 |
+| `SpecularMask` | fuerza del brillo | 0.387 |
+| `RimSize` | ancho del rim | 0.042 |
+| `AmbientFlatness` | qué tan plano es el ambiente | 1 |
+| `_OutlineWidth` | grosor del contorno, en píxeles | 4 |

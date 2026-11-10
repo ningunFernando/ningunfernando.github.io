@@ -1,9 +1,11 @@
 ---
 import Glass from "./Glass.astro";
 import Button from "./Button.astro";
+import NoteRow from "./NoteRow.astro";
 import { useTranslations } from "../i18n/ui.js";
-import { sections } from "../i18n/routes.js";
+import { sections, notesSlug } from "../i18n/routes.js";
 import { getPieces } from "../lib/pieces.js";
+import { getNotes } from "../lib/notes.js";
 
 const lang = Astro.currentLocale;
 const t = useTranslations(lang);
@@ -24,6 +26,9 @@ const rows = await Promise.all(
         };
     }),
 );
+
+// Las tres notas más recientes.
+const notes = (await getNotes(lang)).slice(0, 3);
 ---
 
 <section class="hub" aria-labelledby="hub-title">
@@ -72,6 +77,22 @@ const rows = await Promise.all(
             ))
         }
     </nav>
+
+    {
+        notes.length > 0 && (
+            <div class="latest">
+                <div class="latest-head">
+                    <h3>{t("notes.title")}</h3>
+                    <a href={`/${lang}/${notesSlug[lang]}`}>{t("notes.all")}</a>
+                </div>
+                <ul>
+                    {notes.map((note) => (
+                        <NoteRow note={note} />
+                    ))}
+                </ul>
+            </div>
+        )
+    }
 </section>
 
 <style>
@@ -212,6 +233,48 @@ const rows = await Promise.all(
         color: var(--grafito);
     }
 
+    .latest {
+        padding: 4rem 2rem 0;
+    }
+
+    .latest-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .latest h3 {
+        margin: 0;
+        font-size: var(--t-lead);
+        font-weight: 500;
+        color: var(--gris);
+    }
+
+    .latest-head a {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--niebla);
+        text-decoration: none;
+    }
+
+    .latest-head a:hover {
+        color: var(--blanco);
+    }
+
+    .latest-head a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    .latest ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border-bottom: 1px solid var(--line);
+    }
+
     @media (max-width: 48rem) {
         .top {
             grid-template-columns: minmax(0, 1fr);
@@ -225,6 +288,10 @@ const rows = await Promise.all(
 
         .top {
             padding: 0 1rem 3rem;
+        }
+
+        .latest {
+            padding: 3rem 1rem 0;
         }
 
         .row {

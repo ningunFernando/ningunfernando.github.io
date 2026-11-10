@@ -1,8 +1,17 @@
 // @ts-check
 import { defineConfig, fontProviders } from "astro/config";
+import mdx from "@astrojs/mdx";
 
 // https://astro.build/config
 export default defineConfig({
+    // Notas y breakdowns en MDX: Markdown que admite componentes (visor, figuras de nodos).
+    integrations: [mdx()],
+    // Código resaltado en los posts. El fondo lo pone el CSS del post.
+    markdown: {
+        shikiConfig: {
+            theme: "github-dark-default",
+        },
+    },
     fonts: [
         {
             provider: fontProviders.local(),

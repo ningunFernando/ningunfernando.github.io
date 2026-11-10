@@ -1,0 +1,47 @@
+---
+// Listado de todas las notas y breakdowns de un idioma, de la más nueva a la más vieja.
+import NoteRow from "./NoteRow.astro";
+import { useTranslations } from "../i18n/ui.js";
+import { getNotes } from "../lib/notes.js";
+
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const notes = await getNotes(lang);
+---
+
+<div class="notes">
+    <h1>{t("notes.title")}</h1>
+    {
+        notes.length ? (
+            <ul class="list">
+                {notes.map((note) => (
+                    <NoteRow note={note} />
+                ))}
+            </ul>
+        ) : (
+            <p class="empty">{t("notes.empty")}</p>
+        )
+    }
+</div>
+
+<style>
+    h1 {
+        margin: 0 0 2rem;
+        font-size: var(--t-h1);
+        line-height: 1;
+        letter-spacing: -0.04em;
+        color: var(--blanco);
+    }
+
+    .list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .empty {
+        font-family: var(--mono);
+        color: var(--gris);
+    }
+</style>

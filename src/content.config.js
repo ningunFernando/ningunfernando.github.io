@@ -27,4 +27,21 @@ const piezas = defineCollection({
     }),
 });
 
-export const collections = { piezas };
+// Notas y breakdowns en MDX: src/content/notas/<idioma>/<slug>.mdx. Con `piece`, la nota es el
+// breakdown de esa pieza y vive en su ruta (/es/shading/cell-shader/breakdown); sin él, en /es/notas/<slug>.
+const notas = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/notas' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(), // la entrada: qué se construye y qué se podrá hacer al final
+    date: z.coerce.date(),
+    section: z.enum(['shading', 'tools', 'otros']),
+    piece: z.string().optional(), // slug de la pieza
+    tags: z.array(z.string()).default([]),
+    download: z.object({ label: z.string(), href: z.string() }).optional(), // paquete descargable
+    repo: z.url().optional(),
+    draft: z.boolean().default(false), // los borradores solo se ven en desarrollo
+  }),
+});
+
+export const collections = { piezas, notas };

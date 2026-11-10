@@ -25,10 +25,16 @@ export function findSection(pathname) {
   return sections.find((section) => section.slug[lang] === slug);
 }
 
-// La misma página en otro idioma: cambia el idioma y, si es una sección,
-// también su ruta ("/es/otros" → "/en/other").
+// La ruta de las notas sueltas en cada idioma. Los breakdowns viven bajo su pieza.
+export const notesSlug = { es: "notas", en: "notes" };
+
+// La misma página en otro idioma: cambia el idioma y, si es una sección o las notas,
+// también su ruta ("/es/otros" → "/en/other", "/es/notas" → "/en/notes").
 export function translatePath(pathname, toLang) {
-  const [, , slug = "", ...rest] = pathname.split("/");
+  const [, fromLang, slug = "", ...rest] = pathname.split("/");
   const section = findSection(pathname);
-  return ["", toLang, section ? section.slug[toLang] : slug, ...rest].join("/");
+  let next = slug;
+  if (section) next = section.slug[toLang];
+  else if (slug === notesSlug[fromLang]) next = notesSlug[toLang];
+  return ["", toLang, next, ...rest].join("/");
 }

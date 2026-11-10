@@ -1,0 +1,81 @@
+---
+// Fila de nota: fecha, título, sección y minutos de lectura. Va dentro de un <ul>.
+import { useTranslations } from "../i18n/ui.js";
+import { sections } from "../i18n/routes.js";
+import { noteUrl, formatDate } from "../lib/notes.js";
+
+const { note } = Astro.props;
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const { data } = note.entry;
+const section = sections.find((s) => s.id === data.section);
+---
+
+<li class="note">
+    <a href={noteUrl(note, lang)} style={`--c: var(${section.token})`}>
+        <time datetime={data.date.toISOString().slice(0, 10)}>{formatDate(data.date, lang, "short")}</time>
+        <span class="title" lang={note.fallback ? note.lang : undefined}>{data.title}</span>
+        <span class="sec">{t(`section.${section.id}`)}</span>
+        <span class="min">~{note.minutes} min</span>
+    </a>
+</li>
+
+<style>
+    a {
+        display: grid;
+        grid-template-columns: 8rem minmax(0, 1fr) auto 5rem;
+        gap: 1.125rem;
+        align-items: center;
+        min-height: 2.75rem;
+        padding: 0.5rem 0;
+        border-top: 1px solid var(--line);
+        color: var(--niebla);
+        text-decoration: none;
+    }
+
+    a:hover .title {
+        color: var(--blanco);
+    }
+
+    a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    time,
+    .sec,
+    .min {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--gris);
+    }
+
+    .sec::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 0.5rem;
+        background: var(--c);
+    }
+
+    .min {
+        text-align: right;
+    }
+
+    @media (max-width: 40rem) {
+        a {
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.25rem 1rem;
+        }
+
+        .title {
+            grid-column: 1 / -1;
+            grid-row: 2;
+        }
+
+        .sec {
+            display: none;
+        }
+    }
+</style>

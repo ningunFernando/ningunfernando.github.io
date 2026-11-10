@@ -2,17 +2,26 @@
 import Glass from "./Glass.astro";
 import LangSwitch from "./LangSwitch.astro";
 import { useTranslations } from "../i18n/ui.js";
-import { sections } from "../i18n/routes.js";
+import { sections, notesSlug } from "../i18n/routes.js";
 
 const lang = Astro.currentLocale;
 const t = useTranslations(lang);
 
-// Un enlace por sección, con la ruta y el texto del idioma actual.
-const links = sections.map((section) => ({
-    label: t(`section.${section.id}`),
-    href: `/${lang}/${section.slug[lang]}`,
-    color: `var(${section.token})`,
-}));
+// Un enlace por sección, con la ruta y el texto del idioma actual, y al final las notas,
+// que no tienen color propio (van sin el cuadro).
+const links = [
+    ...sections.map((section) => ({
+        label: t(`section.${section.id}`),
+        href: `/${lang}/${section.slug[lang]}`,
+        color: `var(${section.token})`,
+    })),
+    {
+        label: t("nav.notes"),
+        href: `/${lang}/${notesSlug[lang]}`,
+        color: "transparent",
+        plain: true,
+    },
+];
 
 const current = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
@@ -28,6 +37,7 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
                     {links.map((link) => (
                         <a
                             href={link.href}
+                            class:list={[{ plain: link.plain }]}
                             style={`--c: ${link.color}`}
                             aria-current={
                                 current === link.href ? "page" : undefined
@@ -53,6 +63,7 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
                 {links.map((link) => (
                     <a
                         href={link.href}
+                        class:list={[{ plain: link.plain }]}
                         style={`--c: ${link.color}`}
                         aria-current={
                             current === link.href ? "page" : undefined
@@ -132,6 +143,10 @@ const current = Astro.url.pathname.replace(/\/$/, "") || "/";
         height: 9px;
         margin-right: 9px;
         background: var(--c);
+    }
+
+    .links a.plain::before {
+        display: none;
     }
 
     .links a:hover,

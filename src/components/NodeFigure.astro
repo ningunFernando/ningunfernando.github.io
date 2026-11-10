@@ -1,0 +1,94 @@
+---
+// Figura de nodos: el flujo de un paso del shader, con lo nuevo de ese paso resaltado
+// en el color de la sección. nodes = [{ label, detail?, new? }]
+import { useTranslations } from "../i18n/ui.js";
+
+const { nodes = [], caption } = Astro.props;
+const t = useTranslations(Astro.currentLocale);
+const hasNew = nodes.some((node) => node.new);
+---
+
+<figure class="nodes">
+    <ol>
+        {
+            nodes.map((node) => (
+                <li class:list={["node", { new: node.new }]}>
+                    <span class="label">{node.label}</span>
+                    {node.detail && <span class="detail">{node.detail}</span>}
+                </li>
+            ))
+        }
+    </ol>
+    <figcaption>
+        {hasNew && <span class="legend">{t("note.newInStep")}</span>}
+        {caption && <span>{caption}</span>}
+    </figcaption>
+</figure>
+
+<style>
+    .nodes {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        border: 1px solid var(--line);
+        background: var(--panel);
+    }
+
+    ol {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 2rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .node {
+        position: relative;
+        display: grid;
+        gap: 0.125rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--carbon);
+        background: var(--grafito);
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        line-height: 1.4;
+        color: var(--niebla);
+    }
+
+    .node:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        top: 50%;
+        right: -1.5rem;
+        transform: translateY(-50%);
+        color: var(--gris);
+    }
+
+    .node.new {
+        border-color: var(--c, var(--shading));
+        color: var(--blanco);
+    }
+
+    .detail {
+        color: var(--gris);
+    }
+
+    figcaption {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.25rem;
+        margin-top: 1rem;
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--gris);
+    }
+
+    .legend::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 0.5rem;
+        background: var(--c, var(--shading));
+    }
+</style>
