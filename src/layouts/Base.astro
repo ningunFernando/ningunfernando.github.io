@@ -5,7 +5,8 @@ import Bar from "../components/Bar.astro";
 import "../styles/global.css";
 import Loader from "../components/Loader.astro";
 
-const { title } = Astro.props;
+// full: la página ocupa todo el ancho y alto, sin el margen de main (la intro del inicio).
+const { title, full = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -27,7 +28,7 @@ const { title } = Astro.props;
         <canvas id="mask" transition:persist></canvas>
         <Loader />
         <Bar />
-        <main>
+        <main class:list={[{ full }]}>
             <slot />
         </main>
         <script>
@@ -47,5 +48,9 @@ const { title } = Astro.props;
     }
     main {
         padding: 7rem 2rem 4rem;
+    }
+
+    main.full {
+        padding: 0;
     }
 </style>

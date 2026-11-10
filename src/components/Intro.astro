@@ -1,0 +1,146 @@
+---
+import { useTranslations } from "../i18n/ui.js";
+const t = useTranslations(Astro.currentLocale);
+---
+
+<section class="intro">
+    <canvas class="field" aria-hidden="true"></canvas>
+    <div class="veil" aria-hidden="true"></div>
+
+    <!-- El nombre se ve como ventana en .veil; el h1 reserva su lugar y lo nombra para lectores de pantalla. -->
+    <h1 class="name"><span class="sr-only">ningunfernando</span></h1>
+
+    <div class="copy">
+        <p class="tagline">{t("intro.tagline")}</p>
+        <p class="stack">unity · hlsl · shader graph</p>
+        <p class="role">
+            {t("intro.role")}{" "}
+            <a href="https://teamigloogames.com/" target="_blank" rel="noopener">
+                Team Igloo<span aria-hidden="true"> ↗</span>
+                <span class="sr-only">{t("link.newTab")}</span>
+            </a>
+        </p>
+    </div>
+
+    <p class="hint" aria-hidden="true">{t("intro.hint")}</p>
+</section>
+
+<script>
+    import "../scripts/intro.js";
+</script>
+
+<style>
+    .intro {
+        --gutter: 2rem;
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 1fr auto;
+        gap: 2rem;
+        min-height: 100svh;
+        padding: 8.5rem var(--gutter) var(--gutter);
+        overflow: hidden;
+    }
+
+    .field,
+    .veil {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .field {
+        display: block;
+    }
+
+    /* El campo casi apagado, salvo dentro de las letras: la máscara resta el nombre
+       (abajo, a todo lo ancho) de un rectángulo que cubre todo. */
+    .veil {
+        background: color-mix(in srgb, var(--grafito) 90%, transparent);
+        mask:
+            linear-gradient(#000 0 0),
+            url("../assets/nombre-animable.svg") left var(--gutter) bottom
+                var(--gutter) / calc(100% - 2 * var(--gutter)) auto no-repeat;
+        mask-composite: exclude;
+    }
+
+    /* Mismo ancho y proporción que el SVG (915 × 152), en el mismo lugar que la ventana. */
+    .name {
+        position: relative;
+        grid-row: 2;
+        align-self: end;
+        width: 100%;
+        aspect-ratio: 915 / 152;
+        margin: 0;
+    }
+
+    .copy {
+        position: relative;
+        grid-row: 1;
+    }
+
+    .tagline {
+        max-width: 15em;
+        margin: 0;
+        font-size: var(--t-h2);
+        font-weight: 700;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+        color: var(--blanco);
+        text-wrap: balance;
+    }
+
+    .stack,
+    .role {
+        font-family: var(--mono);
+    }
+
+    .stack {
+        margin: 1.375rem 0 0;
+        color: var(--niebla);
+    }
+
+    .role {
+        margin: 0.375rem 0 0;
+        color: var(--gris);
+    }
+
+    .role a {
+        color: var(--niebla);
+        text-underline-offset: 0.2em;
+    }
+
+    .role a:hover {
+        color: var(--blanco);
+    }
+
+    .role a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    /* La pista solo tiene sentido con ratón. */
+    .hint {
+        display: none;
+        position: absolute;
+        top: 6.5rem;
+        right: var(--gutter);
+        margin: 0;
+        font-family: var(--mono);
+        color: var(--gris);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .hint {
+            display: block;
+        }
+    }
+
+    @media (max-width: 40rem) {
+        .intro {
+            --gutter: 1rem;
+            padding-top: 7.5rem;
+        }
+    }
+</style>
