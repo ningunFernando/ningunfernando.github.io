@@ -1,0 +1,244 @@
+---
+import Base from "../../../layouts/Base.astro";
+import Glass from "../../../components/Glass.astro";
+import Tag from "../../../components/Tag.astro";
+import Button from "../../../components/Button.astro";
+import ShaderViewer from "../../../components/ShaderViewer.astro";
+import { useTranslations } from "../../../i18n/ui.js";
+import { getPiecePaths } from "../../../lib/pieces.js";
+
+// Una página por pieza e idioma: /es/shading/cell-shader, /en/shading/cell-shader…
+export async function getStaticPaths() {
+    return getPiecePaths();
+}
+
+const { entry, section } = Astro.props;
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const data = entry.data;
+const sectionName = t(`section.${section.id}`);
+const sectionHref = `/${lang}/${section.slug[lang]}`;
+const chips = [data.engine, data.year, data.role].filter(Boolean);
+---
+
+<Base title={`${data.title} - ningunfernando`}>
+    <article class="piece" style={`--c: var(${section.token})`}>
+        <a class="back" href={sectionHref}>{t("piece.back")} {sectionName}</a>
+
+        <div class="top">
+            <header class="title">
+                <p class="sec">{sectionName}</p>
+                <h1>{data.title}</h1>
+                <p class="summary">{data.summary}</p>
+                <ul class="chips">
+                    {chips.map((chip) => (
+                        <li><Tag>{chip}</Tag></li>
+                    ))}
+                </ul>
+                {data.metric && <p class="metric">{data.metric}</p>}
+            </header>
+
+            {
+                data.viewer && (
+                    <div class="view">
+                        <ShaderViewer shader={data.viewer} label={t("viewer.label")} />
+                        <p class="note">{t("piece.viewerNote")}</p>
+                    </div>
+                )
+            }
+        </div>
+
+        <!-- Tres profundidades: 30 segundos, 5 minutos y a fondo. -->
+        <div class="depths">
+            <Glass>
+                <section class="depth">
+                    <small>30 s<span>{t("piece.summary")}</span></small>
+                    <h2>{t("piece.whatYouSee")}</h2>
+                    <dl class="lines">
+                        <div><dt>{t("piece.problem")}</dt><dd>{data.problem}</dd></div>
+                        <div><dt>{t("piece.solution")}</dt><dd>{data.solution}</dd></div>
+                        <div><dt>{t("piece.result")}</dt><dd>{data.result}</dd></div>
+                    </dl>
+                </section>
+            </Glass>
+
+            <Glass>
+                <section class="depth">
+                    <small>5 min<span>{t("piece.breakdown")}</span></small>
+                    <h2>{t("piece.breakdownTitle")}</h2>
+                    <p>{t("piece.breakdownSoon")}</p>
+                </section>
+            </Glass>
+
+            {
+                data.links.length > 0 && (
+                    <Glass>
+                        <section class="depth">
+                            <small>{t("piece.deep")}</small>
+                            <h2>{t("piece.resources")}</h2>
+                            <div class="links">
+                                {data.links.map((link) => (
+                                    <Button href={link.href} external>
+                                        {link.label}
+                                    </Button>
+                                ))}
+                            </div>
+                        </section>
+                    </Glass>
+                )
+            }
+        </div>
+    </article>
+</Base>
+
+<style>
+    .back {
+        display: inline-block;
+        margin-bottom: 2rem;
+        font-family: var(--mono);
+        color: var(--gris);
+        text-decoration: none;
+    }
+
+    .back:hover {
+        color: var(--blanco);
+    }
+
+    .back:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    .top {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+        gap: 2.5rem 3rem;
+        align-items: start;
+    }
+
+    .sec {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        margin: 0;
+        font-family: var(--mono);
+        color: var(--niebla);
+    }
+
+    .sec::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        background: var(--c);
+    }
+
+    h1 {
+        margin: 1.25rem 0 1.125rem;
+        font-size: var(--t-h1);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+        color: var(--blanco);
+        text-wrap: balance;
+    }
+
+    .summary {
+        margin: 0;
+        font-size: var(--t-lead);
+        line-height: 1.4;
+        color: var(--niebla);
+        text-wrap: pretty;
+    }
+
+    .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1.375rem 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .metric {
+        margin: 1.25rem 0 0;
+        font-family: var(--mono);
+        color: var(--c);
+    }
+
+    .note {
+        margin: 0.75rem 0 0;
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--gris);
+    }
+
+    .depths {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+        gap: 1.375rem;
+        margin-top: 4rem;
+    }
+
+    .depths :global(.glass) {
+        --ch: 20px;
+        height: 100%;
+    }
+
+    .depth {
+        padding: 1.5rem 1.625rem 1.75rem;
+    }
+
+    .depth small {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        font-weight: 700;
+        color: var(--blanco);
+    }
+
+    .depth small span {
+        margin-left: 0.5rem;
+        font-weight: 400;
+        color: var(--gris);
+    }
+
+    .depth h2 {
+        margin: 0.875rem 0 0.75rem;
+        font-size: var(--t-lead);
+        font-weight: 500;
+        line-height: 1.15;
+        color: var(--blanco);
+    }
+
+    .depth p {
+        margin: 0;
+        color: var(--niebla);
+    }
+
+    .lines {
+        display: grid;
+        gap: 0.75rem;
+        margin: 0;
+    }
+
+    .lines dt {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--c);
+    }
+
+    .lines dd {
+        margin: 0.125rem 0 0;
+        color: var(--niebla);
+    }
+
+    .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    @media (max-width: 56rem) {
+        .top {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+</style>

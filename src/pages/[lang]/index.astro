@@ -1,6 +1,7 @@
 ---
 import Base from "../../layouts/Base.astro";
 import Intro from "../../components/Intro.astro";
+import Hub from "../../components/Hub.astro";
 import { getLangPaths } from "../../i18n/ui.js";
 
 export function getStaticPaths() {
@@ -10,4 +11,5 @@ export function getStaticPaths() {
 
 <Base title="ningunfernando" full>
     <Intro />
+    <Hub />
 </Base>

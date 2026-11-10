@@ -1,0 +1,18 @@
+---
+// Etiqueta: motor, año, técnica… Texto corto en mono con un borde fino.
+---
+
+<span class="tag"><slot /></span>
+
+<style>
+    .tag {
+        display: inline-block;
+        padding: 0.1875rem 0.625rem;
+        border: 1px solid var(--carbon);
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        line-height: 1.6;
+        color: var(--gris);
+        white-space: nowrap;
+    }
+</style>

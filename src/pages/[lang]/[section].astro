@@ -1,7 +1,10 @@
 ---
+import { Image } from "astro:assets";
 import Base from "../../layouts/Base.astro";
+import Tag from "../../components/Tag.astro";
 import { useTranslations } from "../../i18n/ui.js";
-import { getSectionPaths } from "../../i18n/routes.js";
+import { getSectionPaths, sections } from "../../i18n/routes.js";
+import { getPieces, pieceUrl } from "../../lib/pieces.js";
 
 // Seis páginas: shading, tools y otros/other en cada idioma.
 export function getStaticPaths() {
@@ -9,10 +12,196 @@ export function getStaticPaths() {
 }
 
 const { id } = Astro.props;
-const t = useTranslations(Astro.currentLocale);
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
 const name = t(`section.${id}`);
+const section = sections.find((s) => s.id === id);
+const pieces = await getPieces(lang, id);
 ---
 
 <Base title={`${name} - ningunfernando`}>
-    <h1>{name}</h1>
+    <div class="section" style={`--c: var(${section.token})`}>
+        <header class="head">
+            <h1>{name}</h1>
+            <span class="count">{String(pieces.length).padStart(2, "0")}</span>
+        </header>
+
+        {
+            pieces.length ? (
+                <ul class="list">
+                    {pieces.map((piece) => (
+                        <li>
+                            <a class="item" href={pieceUrl(piece)}>
+                                <span class="thumb">
+                                    {piece.data.cover && (
+                                        <Image
+                                            src={piece.data.cover}
+                                            alt=""
+                                            widths={[320, 640]}
+                                            sizes="(max-width: 40rem) 100vw, 20rem"
+                                        />
+                                    )}
+                                </span>
+                                <span class="body">
+                                    <span class="title">{piece.data.title}</span>
+                                    <span class="summary">{piece.data.summary}</span>
+                                    <span class="tags">
+                                        {piece.data.tags.map((tag) => (
+                                            <Tag>{tag}</Tag>
+                                        ))}
+                                    </span>
+                                </span>
+                                <span class="meta">
+                                    {[piece.data.engine, piece.data.year]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                </span>
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p class="empty">{t("section.empty")}</p>
+            )
+        }
+    </div>
 </Base>
+
+<style>
+    .head {
+        display: flex;
+        align-items: baseline;
+        gap: 1.25rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .head h1 {
+        margin: 0;
+        font-size: var(--t-h1);
+        line-height: 1;
+        letter-spacing: -0.04em;
+        color: var(--blanco);
+    }
+
+    .head h1::before {
+        content: "";
+        display: inline-block;
+        width: 0.18em;
+        height: 0.18em;
+        margin-right: 0.25em;
+        vertical-align: 0.12em;
+        background: var(--c);
+    }
+
+    .count {
+        font-family: var(--mono);
+        font-weight: 700;
+        color: var(--c);
+    }
+
+    .list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .item {
+        display: grid;
+        grid-template-columns: 20rem minmax(0, 1fr) auto;
+        gap: 2rem;
+        align-items: center;
+        padding: 1.5rem 0;
+        border-bottom: 1px solid var(--line);
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .thumb {
+        display: block;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        background: var(--panel);
+    }
+
+    .thumb :global(img) {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.6s var(--ease);
+    }
+
+    .item:hover .thumb :global(img) {
+        transform: scale(1.04);
+    }
+
+    .body {
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .title {
+        font-size: var(--t-h3);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--blanco);
+    }
+
+    .item:hover .title {
+        color: var(--c);
+    }
+
+    .summary {
+        max-width: 60ch;
+        color: var(--niebla);
+    }
+
+    .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+    }
+
+    .meta {
+        align-self: start;
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--gris);
+        white-space: nowrap;
+    }
+
+    .item:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 4px;
+    }
+
+    .empty {
+        margin: 2rem 0 0;
+        font-family: var(--mono);
+        color: var(--gris);
+    }
+
+    @media (max-width: 56rem) {
+        .item {
+            grid-template-columns: 12rem minmax(0, 1fr);
+        }
+
+        .meta {
+            grid-column: 2;
+        }
+    }
+
+    @media (max-width: 40rem) {
+        .item {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        .meta {
+            grid-column: auto;
+        }
+    }
+</style>

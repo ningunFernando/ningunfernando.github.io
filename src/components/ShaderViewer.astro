@@ -1,0 +1,129 @@
+---
+// Visor de shader reutilizable: un canvas con el fragment shader `src/shaders/viewers/<shader>.frag`
+// y un control por parámetro (los de src/scripts/viewer-params.js).
+import Glass from "./Glass.astro";
+import { useTranslations } from "../i18n/ui.js";
+import { viewers } from "../scripts/viewer-params.js";
+
+const { shader, label } = Astro.props;
+const t = useTranslations(Astro.currentLocale);
+const params = viewers[shader]?.params ?? [];
+const uid = `viewer-${shader}`;
+---
+
+<figure class="viewer" data-shader={shader}>
+    <div class="stage">
+        <canvas role="img" aria-label={label}></canvas>
+        <p class="fallback">{t("viewer.noGl")}</p>
+    </div>
+    <Glass>
+        <div class="controls">
+            {
+                params.map((param) => (
+                    <label class="param">
+                        <span>{t(`viewer.${param.id}`)}</span>
+                        <input
+                            id={`${uid}-${param.id}`}
+                            type="range"
+                            min={param.min}
+                            max={param.max}
+                            step={param.step}
+                            value={param.value}
+                            data-param={param.id}
+                        />
+                        <output for={`${uid}-${param.id}`}>{param.value}</output>
+                    </label>
+                ))
+            }
+            <span class="hint">{t("viewer.hint")}</span>
+        </div>
+    </Glass>
+</figure>
+
+<script>
+    import "../scripts/viewer.js";
+</script>
+
+<style>
+    .viewer {
+        margin: 0;
+    }
+
+    .stage {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        border: 1px solid var(--line);
+        background: #000;
+    }
+
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: crosshair;
+    }
+
+    .fallback {
+        display: none;
+        position: absolute;
+        inset: 0;
+        place-items: center;
+        margin: 0;
+        padding: 1rem;
+        font-family: var(--mono);
+        color: var(--gris);
+        text-align: center;
+    }
+
+    .viewer.no-gl .fallback {
+        display: grid;
+    }
+
+    .viewer :global(.glass) {
+        --ch: 14px;
+        margin-top: 1rem;
+    }
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem 1.75rem;
+        padding: 0.875rem 1.375rem;
+        font-family: var(--mono);
+        color: var(--niebla);
+    }
+
+    .param {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    input {
+        width: 6rem;
+        accent-color: var(--c, var(--shading));
+    }
+
+    input:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    output {
+        min-width: 2.5em;
+        color: var(--blanco);
+    }
+
+    .hint {
+        margin-left: auto;
+        color: var(--gris);
+    }
+
+    /* En pantallas táctiles la luz se mueve tocando el visor: la pista del cursor sobra. */
+    @media not (hover: hover) {
+        .hint {
+            display: none;
+        }
+    }
+</style>

@@ -1,0 +1,247 @@
+---
+import Glass from "./Glass.astro";
+import Button from "./Button.astro";
+import { useTranslations } from "../i18n/ui.js";
+import { sections } from "../i18n/routes.js";
+import { getPieces } from "../lib/pieces.js";
+
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const STEAM = "https://store.steampowered.com/app/3627840/Waddle__Rescue/";
+
+// Una fila por sección: su nombre, cuántas piezas tiene y las primeras tres.
+const rows = await Promise.all(
+    sections.map(async (section) => {
+        const pieces = await getPieces(lang, section.id);
+        return {
+            name: t(`section.${section.id}`),
+            href: `/${lang}/${section.slug[lang]}`,
+            token: section.token,
+            count: String(pieces.length).padStart(2, "0"),
+            items: pieces.length
+                ? pieces.slice(0, 3).map((piece) => piece.data.title)
+                : [t("hub.soon")],
+        };
+    }),
+);
+---
+
+<section class="hub" aria-labelledby="hub-title">
+    <h2 id="hub-title" class="sr-only">{t("hub.title")}</h2>
+
+    <div class="top">
+        <p class="about">{t("hub.about")}</p>
+        <div class="featured">
+            <Glass>
+                <div class="feat">
+                    <small>{t("hub.featured")}</small>
+                    <h3>Waddle &amp; Rescue</h3>
+                    <p>{t("hub.featuredBy")} · {t("hub.myPart")}</p>
+                    <Button href={STEAM} external>{t("hub.steam")}</Button>
+                </div>
+            </Glass>
+        </div>
+    </div>
+
+    <!-- Índice tipográfico: al pasar el cursor entra el color de la sección con un corte a 15°.
+         La segunda copia del texto (.inv) va en grafito y se recorta igual que el color. -->
+    <nav class="index" aria-label={t("hub.index")}>
+        {
+            rows.map((row) => (
+                <a class="row" href={row.href} style={`--c: var(${row.token})`}>
+                    <span class="fill" aria-hidden="true" />
+                    <span class="rc">
+                        <span class="lab">{row.name}</span>
+                        <span class="meta">
+                            <b>{row.count}</b>
+                            {row.items.map((item) => (
+                                <span>{item}</span>
+                            ))}
+                        </span>
+                    </span>
+                    <span class="rc inv" aria-hidden="true">
+                        <span class="lab">{row.name}</span>
+                        <span class="meta">
+                            <b>{row.count}</b>
+                            {row.items.map((item) => (
+                                <span>{item}</span>
+                            ))}
+                        </span>
+                    </span>
+                </a>
+            ))
+        }
+    </nav>
+</section>
+
+<style>
+    /* Registrar --x permite animarla: sin esto, el navegador no sabe interpolar el corte. */
+    @property --x {
+        syntax: "<length-percentage>";
+        inherits: true;
+        initial-value: 0%;
+    }
+
+    .hub {
+        padding: 6rem 0 4rem;
+    }
+
+    .top {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+        gap: 2rem 4rem;
+        align-items: start;
+        padding: 0 2rem 4rem;
+    }
+
+    .about {
+        max-width: 20em;
+        margin: 0;
+        font-size: var(--t-h3);
+        line-height: 1.25;
+        color: var(--blanco);
+        text-wrap: pretty;
+    }
+
+    .feat {
+        padding: 1.5rem 1.75rem 1.75rem;
+    }
+
+    .feat small,
+    .feat p {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--gris);
+    }
+
+    .feat h3 {
+        margin: 0.375rem 0;
+        font-size: var(--t-lead);
+        font-weight: 500;
+        line-height: 1.15;
+        color: var(--blanco);
+    }
+
+    .feat p {
+        margin: 0 0 1.25rem;
+    }
+
+    .row {
+        --h: 11.25rem;
+        --slant: calc(var(--h) * 0.2679); /* tan 15°: el borde del color va inclinado 15° */
+        --x: 0%;
+        position: relative;
+        display: block;
+        height: var(--h);
+        border-top: 1px solid var(--line);
+        overflow: hidden;
+        color: var(--blanco);
+        text-decoration: none;
+        transition: --x 0.75s var(--ease);
+    }
+
+    .row:last-child {
+        border-bottom: 1px solid var(--line);
+    }
+
+    .row:hover,
+    .row:focus-visible {
+        --x: calc(100% + var(--slant));
+    }
+
+    .row:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: -2px;
+    }
+
+    .fill,
+    .inv {
+        clip-path: polygon(
+            0 0,
+            var(--x) 0,
+            calc(var(--x) - var(--slant)) 100%,
+            0 100%
+        );
+    }
+
+    .fill {
+        position: absolute;
+        inset: 0;
+        background: var(--c);
+    }
+
+    .rc {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+        height: 100%;
+        padding: 0 2rem;
+    }
+
+    .rc.inv {
+        position: absolute;
+        inset: 0;
+        color: var(--grafito);
+    }
+
+    .lab {
+        font-size: var(--t-display);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.04em;
+    }
+
+    .meta {
+        display: grid;
+        gap: 0.1875rem;
+        justify-items: end;
+        font-family: var(--mono);
+        color: var(--gris);
+        text-align: right;
+    }
+
+    .meta b {
+        margin-bottom: 0.375rem;
+        color: var(--c);
+    }
+
+    .inv .meta,
+    .inv .meta b {
+        color: var(--grafito);
+    }
+
+    @media (max-width: 48rem) {
+        .top {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    @media (max-width: 40rem) {
+        .hub {
+            padding-top: 4rem;
+        }
+
+        .top {
+            padding: 0 1rem 3rem;
+        }
+
+        .row {
+            --h: 7rem;
+        }
+
+        .rc {
+            padding: 0 1rem;
+        }
+
+        .lab {
+            font-size: var(--t-h1);
+        }
+
+        /* En pantallas angostas solo queda la cuenta de piezas. */
+        .meta span {
+            display: none;
+        }
+    }
+</style>
