@@ -1,0 +1,84 @@
+---
+// Pie: isotipo, nombre y año, sobre mí y CV, y correo y redes.
+import ContactLinks from "./ContactLinks.astro";
+import { useTranslations } from "../i18n/ui.js";
+import { aboutSlug } from "../i18n/routes.js";
+import { cvHref } from "../lib/contact.js";
+
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const cv = cvHref(lang);
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+    <div class="brand">
+        <img src="/isotipo-blanco.svg" alt="" width="18" height="20" />
+        <span>© {year} ningunfernando</span>
+    </div>
+    <ul class="pages" aria-label={t("footer.pages")}>
+        <li><a href={`/${lang}/${aboutSlug[lang]}`}>{t("footer.about")}</a></li>
+        {
+            cv && (
+                <li>
+                    <a href={cv} target="_blank" rel="noopener">
+                        {t("footer.cv")}
+                        <span aria-hidden="true"> ↗</span>
+                        <span class="sr-only">{t("link.newTab")}</span>
+                    </a>
+                </li>
+            )
+        }
+    </ul>
+    <ContactLinks label={t("footer.contact")} />
+</footer>
+
+<style>
+    .footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.25rem 2.5rem;
+        padding: 2rem;
+        border-top: 1px solid var(--line);
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--gris);
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .pages {
+        display: flex;
+        gap: 1.5rem;
+        margin: 0 auto 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .pages a {
+        color: var(--niebla);
+        text-decoration: none;
+    }
+
+    .pages a:hover {
+        color: var(--blanco);
+    }
+
+    .pages a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    @media (max-width: 40rem) {
+        .footer {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 2rem 1rem;
+        }
+    }
+</style>

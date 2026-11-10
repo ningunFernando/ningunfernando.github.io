@@ -44,4 +44,28 @@ const notas = defineCollection({
   }),
 });
 
-export const collections = { piezas, notas };
+// Sobre mí: un archivo por idioma (src/content/sobre/es.md y en.md). El texto de presentación
+// va en el cuerpo; foto, herramientas y experiencia, en el encabezado. Lo que esté vacío no se muestra.
+const sobre = defineCollection({
+  loader: glob({ pattern: '*.md', base: './src/content/sobre' }),
+  schema: ({ image }) =>
+    z.object({
+      title: z.string(),
+      photo: image().optional(),
+      photoAlt: z.string().default(''),
+      tools: z.array(z.object({ group: z.string(), items: z.array(z.string()) })).default([]),
+      experience: z
+        .array(
+          z.object({
+            period: z.coerce.string(), // "2025 – hoy"; un año solo (2024) YAML lo lee como número
+            role: z.string(),
+            place: z.string().optional(),
+            href: z.url().optional(),
+            description: z.string().optional(),
+          }),
+        )
+        .default([]),
+    }),
+});
+
+export const collections = { piezas, notas, sobre };

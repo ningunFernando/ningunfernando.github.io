@@ -58,6 +58,13 @@ export const ui = {
     "lang.name.en": "inglés",
     "rss.title": "ningunfernando · notas",
     "rss.description": "Notas y breakdowns de shading y tooling para juegos.",
+    "about.tools": "herramientas",
+    "about.experience": "experiencia",
+    "about.contact": "contacto",
+    "footer.about": "sobre mí",
+    "footer.cv": "cv",
+    "footer.contact": "Contacto y redes",
+    "footer.pages": "Páginas",
   },
   en: {
     "nav.label": "Main",
@@ -116,6 +123,13 @@ export const ui = {
     "lang.name.en": "English",
     "rss.title": "ningunfernando · notes",
     "rss.description": "Notes and breakdowns on shading and tooling for games.",
+    "about.tools": "tools",
+    "about.experience": "experience",
+    "about.contact": "contact",
+    "footer.about": "about me",
+    "footer.cv": "cv",
+    "footer.contact": "Contact and social",
+    "footer.pages": "Pages",
   },
 };
 

@@ -4,6 +4,7 @@ import { Font } from "astro:assets";
 import Bar from "../components/Bar.astro";
 import "../styles/global.css";
 import Loader from "../components/Loader.astro";
+import Footer from "../components/Footer.astro";
 
 // full: la página ocupa todo el ancho y alto, sin el margen de main (la intro del inicio).
 const { title, full = false } = Astro.props;
@@ -35,6 +36,7 @@ const rssHref = Astro.site ? new URL(`/${lang}/rss.xml`, Astro.site).href : null
         <main class:list={[{ full }]}>
             <slot />
         </main>
+        <Footer />
         <script>
             import "../scripts/mask.js";
         </script>

@@ -3,9 +3,10 @@ import Glass from "./Glass.astro";
 import Button from "./Button.astro";
 import NoteRow from "./NoteRow.astro";
 import { useTranslations } from "../i18n/ui.js";
-import { sections, notesSlug } from "../i18n/routes.js";
+import { sections, notesSlug, aboutSlug } from "../i18n/routes.js";
 import { getPieces } from "../lib/pieces.js";
 import { getNotes } from "../lib/notes.js";
+import { cvHref } from "../lib/contact.js";
 
 const lang = Astro.currentLocale;
 const t = useTranslations(lang);
@@ -29,13 +30,31 @@ const rows = await Promise.all(
 
 // Las tres notas más recientes.
 const notes = (await getNotes(lang)).slice(0, 3);
+const cv = cvHref(lang);
 ---
 
 <section class="hub" aria-labelledby="hub-title">
     <h2 id="hub-title" class="sr-only">{t("hub.title")}</h2>
 
     <div class="top">
-        <p class="about">{t("hub.about")}</p>
+        <div>
+            <p class="about">{t("hub.about")}</p>
+            <p class="personal">
+                <a href={`/${lang}/${aboutSlug[lang]}`}>{t("footer.about")}</a>
+                {
+                    cv && (
+                        <>
+                            {" · "}
+                            <a href={cv} target="_blank" rel="noopener">
+                                {t("footer.cv")}
+                                <span aria-hidden="true"> ↗</span>
+                                <span class="sr-only">{t("link.newTab")}</span>
+                            </a>
+                        </>
+                    )
+                }
+            </p>
+        </div>
         <div class="featured">
             <Glass>
                 <div class="feat">
@@ -122,6 +141,26 @@ const notes = (await getNotes(lang)).slice(0, 3);
         line-height: 1.25;
         color: var(--blanco);
         text-wrap: pretty;
+    }
+
+    .personal {
+        margin: 0.875rem 0 0;
+        font-family: var(--mono);
+        color: var(--gris);
+    }
+
+    .personal a {
+        color: var(--niebla);
+        text-underline-offset: 0.2em;
+    }
+
+    .personal a:hover {
+        color: var(--blanco);
+    }
+
+    .personal a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
     }
 
     .feat {

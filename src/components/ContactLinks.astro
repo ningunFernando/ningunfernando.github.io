@@ -1,0 +1,50 @@
+---
+// Correo y redes, con los datos de src/lib/contact.js. Las redes se abren en otra pestaña.
+import { useTranslations } from "../i18n/ui.js";
+import { email, socials } from "../lib/contact.js";
+
+const { label } = Astro.props;
+const t = useTranslations(Astro.currentLocale);
+---
+
+<ul class="contact" aria-label={label}>
+    <li><a href={`mailto:${email}`}>{email}</a></li>
+    {
+        socials.map((social) => (
+            <li>
+                <a href={social.href} target="_blank" rel="noopener">
+                    {social.label}
+                    <span aria-hidden="true"> ↗</span>
+                    <span class="sr-only">{t("link.newTab")}</span>
+                </a>
+            </li>
+        ))
+    }
+</ul>
+
+<style>
+    .contact {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    a {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        color: var(--niebla);
+        text-decoration: none;
+    }
+
+    a:hover {
+        color: var(--blanco);
+    }
+
+    a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+</style>

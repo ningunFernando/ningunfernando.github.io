@@ -1,0 +1,263 @@
+---
+// Página «sobre mí»: el contenido sale de src/content/sobre/<idioma>.md, que escribe el usuario.
+// Cada parte (texto, foto, herramientas, experiencia) solo aparece si tiene contenido.
+import { getEntry, render } from "astro:content";
+import { Image } from "astro:assets";
+import Tag from "./Tag.astro";
+import ContactLinks from "./ContactLinks.astro";
+import { lenguajes, useTranslations } from "../i18n/ui.js";
+import { cvHref } from "../lib/contact.js";
+
+const lang = Astro.currentLocale;
+const t = useTranslations(lang);
+const other = lenguajes.find((l) => l !== lang);
+const entry = (await getEntry("sobre", lang)) ?? (await getEntry("sobre", other));
+const entryLang = entry.id;
+const { Content } = await render(entry);
+// El cuerpo cuenta como texto si queda algo además de los comentarios de la plantilla.
+const hasText = (entry.body ?? "").replace(/<!--[\s\S]*?-->/g, "").trim().length > 0;
+const { title, photo, photoAlt, tools, experience } = entry.data;
+const cv = cvHref(lang);
+---
+
+<div class="about" lang={entryLang !== lang ? entryLang : undefined}>
+    <h1>{title}</h1>
+
+    <div class:list={["intro", { "with-photo": photo }]}>
+        {
+            photo && (
+                <Image
+                    class="photo"
+                    src={photo}
+                    alt={photoAlt}
+                    widths={[320, 640]}
+                    sizes="(max-width: 48rem) 100vw, 20rem"
+                />
+            )
+        }
+        <div class="text">
+            {
+                hasText && (
+                    <div class="prose">
+                        <Content />
+                    </div>
+                )
+            }
+            <section class="contact" aria-labelledby="about-contact">
+                <h2 id="about-contact">{t("about.contact")}</h2>
+                <ContactLinks />
+                {
+                    cv && (
+                        <a class="cv" href={cv} target="_blank" rel="noopener">
+                            {t("footer.cv")}
+                            <span aria-hidden="true"> ↗</span>
+                            <span class="sr-only">{t("link.newTab")}</span>
+                        </a>
+                    )
+                }
+            </section>
+        </div>
+    </div>
+
+    {
+        tools.length > 0 && (
+            <section class="block" aria-labelledby="about-tools">
+                <h2 id="about-tools">{t("about.tools")}</h2>
+                <dl class="tools">
+                    {tools.map((group) => (
+                        <div>
+                            <dt>{group.group}</dt>
+                            <dd>
+                                {group.items.map((item) => (
+                                    <Tag>{item}</Tag>
+                                ))}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+            </section>
+        )
+    }
+
+    {
+        experience.length > 0 && (
+            <section class="block" aria-labelledby="about-experience">
+                <h2 id="about-experience">{t("about.experience")}</h2>
+                <ol class="timeline">
+                    {experience.map((item) => (
+                        <li>
+                            <span class="period">{item.period}</span>
+                            <div>
+                                <p class="role">
+                                    {item.role}
+                                    {item.place && " · "}
+                                    {item.place &&
+                                        (item.href ? (
+                                            <a href={item.href} target="_blank" rel="noopener">
+                                                {item.place}
+                                                <span aria-hidden="true"> ↗</span>
+                                                <span class="sr-only">{t("link.newTab")}</span>
+                                            </a>
+                                        ) : (
+                                            item.place
+                                        ))}
+                                </p>
+                                {item.description && <p class="desc">{item.description}</p>}
+                            </div>
+                        </li>
+                    ))}
+                </ol>
+            </section>
+        )
+    }
+</div>
+
+<style>
+    h1 {
+        margin: 0 0 2.5rem;
+        font-size: var(--t-h1);
+        line-height: 1;
+        letter-spacing: -0.04em;
+        color: var(--blanco);
+    }
+
+    h2 {
+        margin: 0 0 1rem;
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        font-weight: 400;
+        color: var(--gris);
+    }
+
+    .intro {
+        display: grid;
+        grid-template-columns: minmax(0, 46rem);
+        gap: 2.5rem 4rem;
+    }
+
+    .intro.with-photo {
+        grid-template-columns: minmax(0, 20rem) minmax(0, 46rem);
+    }
+
+    .intro :global(.photo) {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+    }
+
+    .prose {
+        margin-bottom: 2.5rem;
+        font-size: var(--t-lead);
+        line-height: 1.5;
+        color: var(--blanco);
+    }
+
+    .prose :global(p) {
+        margin: 0 0 1rem;
+        max-width: 60ch;
+        text-wrap: pretty;
+    }
+
+    .prose :global(a) {
+        color: var(--blanco);
+        text-underline-offset: 0.2em;
+    }
+
+    .cv {
+        display: inline-block;
+        margin-top: 1rem;
+        font-family: var(--mono);
+        color: var(--blanco);
+        text-underline-offset: 0.2em;
+    }
+
+    .cv:focus-visible,
+    .role a:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    .block {
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--line);
+    }
+
+    .tools {
+        display: grid;
+        gap: 1rem;
+        margin: 0;
+    }
+
+    .tools div {
+        display: grid;
+        grid-template-columns: 12rem minmax(0, 1fr);
+        gap: 1rem;
+        align-items: baseline;
+    }
+
+    .tools dt {
+        color: var(--blanco);
+    }
+
+    .tools dd {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0;
+    }
+
+    .timeline {
+        display: grid;
+        gap: 1.5rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .timeline li {
+        display: grid;
+        grid-template-columns: 12rem minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .period {
+        font-family: var(--mono);
+        font-size: var(--t-label);
+        line-height: 1.8;
+        color: var(--gris);
+    }
+
+    .role {
+        margin: 0;
+        color: var(--blanco);
+    }
+
+    .role a {
+        color: var(--blanco);
+        text-underline-offset: 0.2em;
+    }
+
+    .desc {
+        margin: 0.25rem 0 0;
+        max-width: 60ch;
+        color: var(--niebla);
+    }
+
+    @media (max-width: 48rem) {
+        .intro.with-photo {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .intro :global(.photo) {
+            max-width: 20rem;
+        }
+
+        .tools div,
+        .timeline li {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.25rem;
+        }
+    }
+</style>
