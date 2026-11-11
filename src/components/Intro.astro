@@ -32,13 +32,15 @@ const t = useTranslations(Astro.currentLocale);
 <style>
     .intro {
         --gutter: 2rem;
+        /* A qué distancia del borde de abajo queda el nombre. */
+        --name-bottom: var(--gutter);
         position: relative;
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: 1fr auto;
         gap: 2rem;
         min-height: 100svh;
-        padding: 8.5rem var(--gutter) var(--gutter);
+        padding: 8.5rem var(--gutter) var(--name-bottom);
         overflow: hidden;
     }
 
@@ -61,7 +63,7 @@ const t = useTranslations(Astro.currentLocale);
         mask:
             linear-gradient(#000 0 0),
             url("../assets/nombre-animable.svg") left var(--gutter) bottom
-                var(--gutter) / calc(100% - 2 * var(--gutter)) auto no-repeat;
+                var(--name-bottom) / calc(100% - 2 * var(--gutter)) auto no-repeat;
         mask-composite: exclude;
     }
 
@@ -138,8 +140,10 @@ const t = useTranslations(Astro.currentLocale);
     }
 
     @media (max-width: 40rem) {
+        /* En móvil el nombre sube un poco: queda a 3rem del borde, no pegado a él. */
         .intro {
             --gutter: 1rem;
+            --name-bottom: 3rem;
             padding-top: 7.5rem;
         }
     }

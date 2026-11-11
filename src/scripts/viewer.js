@@ -114,7 +114,11 @@ function mount(viewer) {
 
   for (const param of params) {
     param.input.addEventListener('input', () => {
-      param.output.value = param.input.value;
+      const { input } = param;
+      param.output.value = input.value;
+      // La parte recorrida del deslizador, en porcentaje: el CSS la pinta con el color de la sección.
+      const fill = (Number(input.value) - Number(input.min)) / (Number(input.max) - Number(input.min));
+      input.style.setProperty('--fill', `${fill * 100}%`);
       if (!frame) draw(performance.now());
     }, listen);
   }
