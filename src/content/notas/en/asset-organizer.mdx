@@ -1,0 +1,110 @@
+---
+title: "Asset Organizer: tidying a Unity project by naming convention"
+description: "How the editor tool I made in 2025 sorts assets by prefix and extension: the mappings, keyword grouping, particles and how it moves a thousand files in under a second."
+date: 2026-11-13
+section: tools
+piece: asset-organizer
+tags: [unity, c#, editor tools]
+---
+
+import Figure from '../../../components/Figure.astro';
+import demo from '../../piezas/asset-organizer/demo.gif';
+import portada from '../../piezas/asset-organizer/portada.jpg';
+import bienvenida from '../../piezas/asset-organizer/bienvenida.png';
+import mapeo from '../../piezas/asset-organizer/mapeo.png';
+import flujo from '../../piezas/asset-organizer/flujo.png';
+import agrupacion from '../../piezas/asset-organizer/agrupacion.png';
+
+## Goal
+
+An editor window that sorts the assets of a Unity project by name. Each asset goes to the folder for its type, and the ones that share a base name end up together in a subfolder. One click decides everything, with no dragging files around by hand.
+
+<Figure src={demo} still={portada} alt="The Project window with loose assets; the Asset Organizer appears on top and, once it runs, everything sits in folders by type, with subfolders for the rock and grass textures." caption="The demo: loose assets, the organizer with the template and the result, down to Textures/Rock." />
+
+It is four scripts in an `Editor` folder, so none of it goes into the build. `GlobalAssetOrganizer` is the window and the logic, `AssetOrganizerWelcomeWindow` and `WelcomeWindow` are the welcome, and `ProjectFolderCreator` creates the base folders. The window opens from **Tools › Asset Organizer**.
+
+## The welcome
+
+The first time the project opens, a window explains the tool and offers two paths. **Open Blank Organizer** opens an empty organizer. **Create Project Folders & Organizer** creates the base folders (Animations, Audios, Materials, Models, Prefabs, Scripts, Shaders, Textures and VFX) and loads a mapping template. It shows once per Editor session until "Don't show this again" is ticked.
+
+<Figure src={bienvenida} zoom alt="The Asset Organizer welcome window, with an explanation of the tool and the Open Blank Organizer and Create Project Folders & Organizer buttons." caption="The welcome: an empty organizer, or the base folders with the template." />
+
+## Mappings: prefix, folder and extensions
+
+A mapping holds three things: a prefix, a target folder, dragged in from the Project window, and a list of extensions. An asset matches a mapping when its extension is on the list and its name starts with the prefix, ignoring case. An empty extension list accepts any type, and an empty prefix accepts any name.
+
+<Figure src={mapeo} zoom alt="A mapping in the Asset Organizer: prefix M_, target folder Materials and the .mat extension." caption="One mapping: .mat files that start with M_ go to Materials." />
+
+The first mapping that matches wins, so order matters, and the list is reordered by dragging. Settings are saved in the Editor preferences rather than in the project, hence the "Global" in the name: the same setup works in every project on the machine. This is the template:
+
+| prefix | extensions | folder |
+| --- | --- | --- |
+| `T_` | `.png` `.jpg` `.jpeg` | Textures |
+| `M_` | `.mat` | Materials |
+| (none) | `.prefab` | Prefabs |
+| (none) | `.cs` | Scripts |
+| `SG_` | `.shadergraph` `.shader` `.compute` | Shaders |
+| `AUD_` | `.mp3` `.flac` | Audios |
+| (none) | `.gltf` `.obj` `.fbx` | Models |
+| `VFX` | `.vfx` | VFX |
+| `ANIM` | `.controller` | Animations |
+
+It also ignores four folders: Plugins, Editor, Resources and AssetOrganizer itself.
+
+## Before and after
+
+The demo starts with 27 assets spread across the root, "Downloads" and "New Folder". With the template loaded, one click on **Organize Assets** puts them in folders by type.
+
+<Figure src={flujo} zoom alt="Three windows in a row: the Project window with loose assets, the Asset Organizer with the mapping template and the Project window sorted into folders by type." caption="Before, the organizer with the template, and after." />
+
+"Downloads" and "New Folder" are left empty: the tool moves, it never deletes. Moves go through `AssetDatabase.MoveAsset`, which keeps each asset's GUID and `.meta` file, so references don't break: a prefab still points to its material even when both change folders.
+
+## Grouping by keyword
+
+After the prefix, the name is split on `_`, `-` and spaces, and the first piece is the keyword. When two or more assets in the same mapping share a keyword, they go into a subfolder with that name:
+
+```csharp
+string kw = name.Substring(rule.prefix.Length)
+                .Split(new[]{'_', '-', ' '}, StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault();
+// …
+if (counts.TryGetValue(c.folder + "|" + c.keyword, out int cnt) && cnt > 1)
+    c.folder = $"{c.folder}/{c.keyword}";
+```
+
+`T_Rock_Albedo` and `T_Rock_Normal` end up in Textures/Rock, while `T_Sky` stays in Textures because it is on its own. In mappings with no prefix, the keyword is the first word of the name: `Rock_01.obj` and `Rock_02.obj` go to Models/Rock, and the `Rock_Big` and `Rock_Small` prefabs to Prefabs/Rock. A name with no separators, like `PlayerController`, is never grouped.
+
+<Figure src={agrupacion} zoom alt="The Project window open on Assets/Textures/Rock, with the T_Rock_Albedo and T_Rock_Normal textures." caption="Textures/Rock: the subfolder comes from the keyword both textures share." />
+
+## Particles
+
+With **Organize Particle Prefabs** on, prefabs that have a Particle System in their hierarchy go to Assets/Particles before the mappings are checked. Without that step, the template's no-prefix `.prefab` mapping would send them to Prefabs with everything else. To find out, it loads the prefab and looks for the component in its children with `GetComponentInChildren<ParticleSystem>(true)`.
+
+## What it leaves alone
+
+It only looks inside `Assets/`, never Packages, and skips the ignored folders and any path that goes through an `Editor` folder. An asset already in its folder isn't moved, so it can run as often as needed. If the destination already has a file with the same name, it warns in the console and doesn't overwrite it. Every run ends with a one-line summary:
+
+```
+[Asset Organizer] Moved 27 assets in 153 ms (0 already in place, 0 failed).
+```
+
+## Speed
+
+A run has three phases: a single search of the asset database to collect the candidates, creating whatever folders are missing and, last, every move in one batch:
+
+```csharp
+AssetDatabase.StartAssetEditing();
+try
+{
+    foreach (var c in cands)
+        MoveAsset(c.assetPath, c.folder);
+}
+finally
+{
+    AssetDatabase.StopAssetEditing();
+}
+```
+
+The 2025 version moved file by file, with no batch, and rebuilt the extension set for every asset and every mapping. To compare them I used a thousand 8 × 8 px textures with 50 different keywords, 20 of each, so every run also creates 50 subfolders. Measured in Unity 6.6 (6000.6.0f1) on a Mac with an Apple M5, the 2025 version took about 5.0 s and the current one about 0.7 s.
+
+The demo, with 27 assets, takes about 150 ms. A second run over the thousand textures, already in place, takes under 0.1 s.

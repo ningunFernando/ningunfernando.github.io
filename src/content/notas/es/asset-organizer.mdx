@@ -1,0 +1,110 @@
+---
+title: "Asset Organizer: ordenar un proyecto de Unity por nomenclatura"
+description: "Cómo funciona la herramienta de editor que hice en 2025 para ordenar assets por prefijo y extensión: los mapeos, la agrupación por palabra clave, las partículas y cómo mueve mil archivos en menos de un segundo."
+date: 2026-11-13
+section: tools
+piece: asset-organizer
+tags: [unity, c#, editor tools]
+---
+
+import Figure from '../../../components/Figure.astro';
+import demo from '../../piezas/asset-organizer/demo.gif';
+import portada from '../../piezas/asset-organizer/portada.jpg';
+import bienvenida from '../../piezas/asset-organizer/bienvenida.png';
+import mapeo from '../../piezas/asset-organizer/mapeo.png';
+import flujo from '../../piezas/asset-organizer/flujo.png';
+import agrupacion from '../../piezas/asset-organizer/agrupacion.png';
+
+## Objetivo
+
+Una ventana de editor que ordena los assets de un proyecto de Unity según su nombre. Cada asset va a la carpeta de su tipo, y los que comparten nombre base quedan juntos en una subcarpeta. Todo se decide con un clic, sin arrastrar archivos a mano.
+
+<Figure src={demo} still={portada} alt="La ventana Project con assets sueltos; encima aparece el Asset Organizer y, al organizar, todo queda en carpetas por tipo, con subcarpetas para las texturas de roca y de pasto." caption="La demo: assets sueltos, el organizador con la plantilla y el resultado, hasta Textures/Rock." />
+
+Son cuatro scripts en una carpeta `Editor`, así que no entran en el build. `GlobalAssetOrganizer` es la ventana y la lógica, `AssetOrganizerWelcomeWindow` y `WelcomeWindow` son la bienvenida, y `ProjectFolderCreator` crea las carpetas base. La ventana se abre desde **Tools › Asset Organizer**.
+
+## La bienvenida
+
+La primera vez que se abre el proyecto aparece una ventana que explica la herramienta y ofrece dos caminos. **Open Blank Organizer** abre el organizador vacío. **Create Project Folders & Organizer** crea las carpetas base (Animations, Audios, Materials, Models, Prefabs, Scripts, Shaders, Textures y VFX) y carga una plantilla de mapeos. Sale una vez por sesión del editor, hasta que se marca «Don't show this again».
+
+<Figure src={bienvenida} zoom alt="Ventana de bienvenida del Asset Organizer con la explicación de la herramienta y los botones Open Blank Organizer y Create Project Folders & Organizer." caption="La bienvenida: organizador vacío, o carpetas base con la plantilla." />
+
+## Mapeos: prefijo, carpeta y extensiones
+
+Un mapeo tiene tres datos: un prefijo, una carpeta de destino, que se arrastra desde la ventana Project, y una lista de extensiones. Un asset entra en el mapeo si su extensión está en la lista y su nombre empieza con el prefijo, sin importar mayúsculas. Una lista de extensiones vacía acepta cualquier tipo, y un prefijo vacío acepta cualquier nombre.
+
+<Figure src={mapeo} zoom alt="Un mapeo en el Asset Organizer: prefijo M_, carpeta de destino Materials y la extensión .mat." caption="Un mapeo: los .mat que empiezan con M_ van a Materials." />
+
+Gana el primer mapeo que coincide, así que el orden importa, y la lista se reordena arrastrando. La configuración se guarda en las preferencias del editor, no en el proyecto, de ahí el «Global» del nombre: la misma configuración sirve en todos los proyectos de la máquina. Esta es la plantilla:
+
+| prefijo | extensiones | carpeta |
+| --- | --- | --- |
+| `T_` | `.png` `.jpg` `.jpeg` | Textures |
+| `M_` | `.mat` | Materials |
+| (ninguno) | `.prefab` | Prefabs |
+| (ninguno) | `.cs` | Scripts |
+| `SG_` | `.shadergraph` `.shader` `.compute` | Shaders |
+| `AUD_` | `.mp3` `.flac` | Audios |
+| (ninguno) | `.gltf` `.obj` `.fbx` | Models |
+| `VFX` | `.vfx` | VFX |
+| `ANIM` | `.controller` | Animations |
+
+Además ignora cuatro carpetas: Plugins, Editor, Resources y la propia AssetOrganizer.
+
+## Antes y después
+
+La demo parte de 27 assets repartidos entre la raíz, «Downloads» y «New Folder». Con la plantilla cargada, un clic en **Organize Assets** los deja en carpetas por tipo.
+
+<Figure src={flujo} zoom alt="Tres ventanas en fila: la ventana Project con los assets sueltos, el Asset Organizer con la plantilla de mapeos y la ventana Project ya ordenada en carpetas por tipo." caption="Antes, el organizador con la plantilla y después." />
+
+«Downloads» y «New Folder» quedan vacías: la herramienta mueve, nunca borra. Los movimientos usan `AssetDatabase.MoveAsset`, que conserva el GUID y el `.meta` de cada asset, así que las referencias no se rompen: un prefab sigue apuntando a su material aunque los dos cambien de carpeta.
+
+## Agrupar por palabra clave
+
+Después del prefijo, el nombre se corta por `_`, `-` y espacios, y el primer trozo es la palabra clave. Si dos o más assets del mismo mapeo comparten palabra clave, van a una subcarpeta con ese nombre:
+
+```csharp
+string kw = name.Substring(rule.prefix.Length)
+                .Split(new[]{'_', '-', ' '}, StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault();
+// …
+if (counts.TryGetValue(c.folder + "|" + c.keyword, out int cnt) && cnt > 1)
+    c.folder = $"{c.folder}/{c.keyword}";
+```
+
+`T_Rock_Albedo` y `T_Rock_Normal` terminan en Textures/Rock, mientras que `T_Sky` se queda en Textures porque está solo. En los mapeos sin prefijo, la palabra clave es la primera palabra del nombre: `Rock_01.obj` y `Rock_02.obj` van a Models/Rock, y los prefabs `Rock_Big` y `Rock_Small`, a Prefabs/Rock. Un nombre sin separadores, como `PlayerController`, nunca se agrupa.
+
+<Figure src={agrupacion} zoom alt="La ventana Project abierta en Assets/Textures/Rock, con las texturas T_Rock_Albedo y T_Rock_Normal." caption="Textures/Rock: la subcarpeta sale de la palabra clave que comparten las dos texturas." />
+
+## Partículas
+
+Con **Organize Particle Prefabs** activo, los prefabs que tienen un Particle System en su jerarquía van a Assets/Particles antes de revisar los mapeos. Sin ese paso, el mapeo de `.prefab` sin prefijo de la plantilla los mandaría a Prefabs junto con todo lo demás. Para saberlo, carga el prefab y busca el componente en sus hijos con `GetComponentInChildren<ParticleSystem>(true)`.
+
+## Lo que no toca
+
+Solo revisa `Assets/`, nunca Packages, y salta las carpetas ignoradas y cualquier ruta que pase por una carpeta `Editor`. Un asset que ya está en su carpeta no se mueve, así que se puede correr las veces que haga falta. Si en el destino ya hay un archivo con el mismo nombre, avisa en la consola y no lo sobrescribe. Cada pasada termina con una línea de resumen:
+
+```
+[Asset Organizer] Moved 27 assets in 153 ms (0 already in place, 0 failed).
+```
+
+## Velocidad
+
+La pasada tiene tres fases: una sola búsqueda en la base de datos de assets para reunir los candidatos, la creación de las carpetas que hagan falta y, al final, todos los movimientos en un lote:
+
+```csharp
+AssetDatabase.StartAssetEditing();
+try
+{
+    foreach (var c in cands)
+        MoveAsset(c.assetPath, c.folder);
+}
+finally
+{
+    AssetDatabase.StopAssetEditing();
+}
+```
+
+La versión de 2025 movía archivo por archivo, sin lote, y rehacía el conjunto de extensiones por cada asset y cada mapeo. Para compararlas usé mil texturas de 8 × 8 px con 50 palabras clave distintas, 20 de cada una, así que cada pasada también crea 50 subcarpetas. Medido en Unity 6.6 (6000.6.0f1), en un Mac con Apple M5, la versión de 2025 tardó unos 5,0 s y la actual unos 0,7 s.
+
+La demo, con 27 assets, tarda unos 150 ms. Una segunda pasada sobre las mil texturas, ya en su sitio, tarda menos de 0,1 s.
