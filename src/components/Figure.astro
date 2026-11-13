@@ -1,22 +1,60 @@
 ---
-// Figura de un post: una imagen (optimizada por Astro) o un video corto en bucle, en lugar de un GIF.
-// Con movimiento reducido, el video no arranca solo y muestra sus controles.
-import { Image } from "astro:assets";
+// Figura de un post o de una pieza: una imagen (optimizada por Astro), un GIF o un video corto en bucle.
+// Un GIF se sirve tal cual, porque Astro lo convertiría en una imagen fija; con `still`, quien pidió
+// movimiento reducido ve ese cuadro fijo en su lugar. Con movimiento reducido, el video no arranca
+// solo y muestra sus controles. `eager` es para la figura que se ve al abrir la página.
+// `zoom` hace la imagen un enlace a su tamaño completo, para capturas densas como las de un Shader Graph.
+import { Image, getImage } from "astro:assets";
+import { useTranslations } from "../i18n/ui.js";
 
-const { src, video, alt = "", caption } = Astro.props;
+const { src, video, still, alt = "", caption, eager = false, zoom = false } = Astro.props;
+const t = useTranslations(Astro.currentLocale);
+const isGif = src?.format === "gif";
+const stillImage = isGif && still ? await getImage({ src: still, width: src.width, format: "webp" }) : null;
+const full = zoom && src && !isGif ? await getImage({ src, format: "webp", quality: 90 }) : null;
+const loading = eager ? "eager" : "lazy";
 ---
 
 <figure class="figure">
     {
         video ? (
             <video src={video} autoplay muted loop playsinline aria-label={alt} data-autoplay />
+        ) : isGif ? (
+            <picture>
+                {stillImage && <source srcset={stillImage.src} media="(prefers-reduced-motion: reduce)" />}
+                <img src={src.src} width={src.width} height={src.height} alt={alt} loading={loading} decoding="async" />
+            </picture>
+        ) : full ? (
+            <a class="zoom" href={full.src} target="_blank" rel="noopener">
+                <Image
+                    src={src}
+                    alt={alt}
+                    widths={[640, 1280]}
+                    sizes="(max-width: 48rem) 100vw, 46rem"
+                    loading={loading}
+                />
+                <span class="sr-only">{t("figure.zoom")} {t("link.newTab")}</span>
+            </a>
         ) : (
             src && (
-                <Image src={src} alt={alt} widths={[640, 1280]} sizes="(max-width: 48rem) 100vw, 46rem" />
+                <Image
+                    src={src}
+                    alt={alt}
+                    widths={[640, 1280]}
+                    sizes="(max-width: 48rem) 100vw, 46rem"
+                    loading={loading}
+                />
             )
         )
     }
-    {caption && <figcaption>{caption}</figcaption>}
+    {
+        (caption || full) && (
+            <figcaption>
+                {caption}
+                {full && <span class="hint" aria-hidden="true">{t("figure.zoom")} ↗</span>}
+            </figcaption>
+        )
+    }
 </figure>
 
 <script>
@@ -47,5 +85,22 @@ const { src, video, alt = "", caption } = Astro.props;
         font-family: var(--mono);
         font-size: var(--t-label);
         color: var(--gris);
+    }
+
+    .zoom {
+        display: block;
+        cursor: zoom-in;
+    }
+
+    .zoom:focus-visible {
+        outline: 2px solid var(--blanco);
+        outline-offset: 2px;
+    }
+
+    /* El aviso de que la captura se abre en grande, al final del pie, separado del texto. */
+    .hint {
+        margin-left: 0.75rem;
+        color: var(--niebla);
+        white-space: nowrap;
     }
 </style>

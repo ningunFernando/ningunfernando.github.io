@@ -1,0 +1,145 @@
+---
+title: "Agua estilizada: profundidad, bandas, refracción y espuma"
+description: "Cómo está armado el agua toon que hice en 2025 en Shader Graph: todo sale de la profundidad de la escena, del color en bandas a la espuma, y unas olas en los vértices la ponen a moverse."
+date: 2026-11-12
+section: shading
+piece: stylized-water
+tags: [unity, urp, shader graph, hlsl]
+---
+
+import Figure from '../../../components/Figure.astro';
+import grafoDepthFade from '../../piezas/stylized-water/grafos/depth-fade.png';
+import grafoWaterColor from '../../piezas/stylized-water/grafos/water-color.png';
+import grafoTextureMovement from '../../piezas/stylized-water/grafos/texture-movement.png';
+import grafoDistortedNormals from '../../piezas/stylized-water/grafos/distorted-normals.png';
+import grafoFoam from '../../piezas/stylized-water/grafos/foam.png';
+import grafoComposicion from '../../piezas/stylized-water/grafos/composicion.png';
+import grafoWavesNodo from '../../piezas/stylized-water/grafos/waves-nodo.png';
+import grafoWavesMoment from '../../piezas/stylized-water/grafos/waves-moment.png';
+import final from '../../piezas/stylized-water/final.gif';
+import finalStill from '../../piezas/stylized-water/final.jpg';
+import profundidad from '../../piezas/stylized-water/profundidad.jpg';
+import colorSuave from '../../piezas/stylized-water/color-suave.jpg';
+import hsvRgb from '../../piezas/stylized-water/hsv-vs-rgb.png';
+import bandas from '../../piezas/stylized-water/bandas.jpg';
+import refraccion from '../../piezas/stylized-water/refraccion.gif';
+import refraccionStill from '../../piezas/stylized-water/refraccion.jpg';
+import espuma from '../../piezas/stylized-water/espuma.gif';
+import espumaStill from '../../piezas/stylized-water/espuma.jpg';
+import olas from '../../piezas/stylized-water/olas.gif';
+import olasStill from '../../piezas/stylized-water/olas.jpg';
+import variantes from '../../piezas/stylized-water/variantes.gif';
+import variantesStill from '../../piezas/stylized-water/variantes.jpg';
+
+## Objetivo
+
+Un agua toon para URP que se arma en un solo Shader Graph, `SG_StylizedWater`, con tres Sub Graphs: `SbG_DepthFade`, `SbG_TextureMovement` y `SbG_WavesMoment`. El color, la transparencia, la espuma y la fuerza de la refracción salen de un mismo dato: cuánta agua hay entre la superficie y lo que está debajo.
+
+<Figure src={final} still={finalStill} alt="La laguna con el agua completa: bandas de color, refracción, espuma en la orilla y olas." caption="El resultado, con el material de la laguna." />
+
+El grafo es Unlit y Transparent, no proyecta sombras y necesita que el URP Asset tenga activadas la Depth Texture y la Opaque Texture. Las capturas de cada fase salen de la misma escena y del mismo material, con lo que todavía no se explica apagado: la espuma con alfa 0 y la refracción y las olas en 0.
+
+## La profundidad como base
+
+`SbG_DepthFade` resta dos profundidades. El nodo Scene Depth, en modo Eye, da la distancia de la cámara a lo opaco que hay detrás del agua. Screen Position en modo Raw trae en su canal `w` la distancia de la cámara a la superficie del agua. La resta es el grosor del agua a lo largo de la mirada; dividido entre `DepthFadeDistance` y con `saturate`, queda en 0 donde el agua toca algo y en 1 a partir de esa distancia.
+
+<Figure src={grafoDepthFade} zoom alt="Shader Graph: el Sub Graph SbG_DepthFade, de Scene Depth y Screen Position a FadedDistance." caption="SbG_DepthFade: Scene Depth (Eye) menos el canal A de Screen Position (Raw), entre DepthFadeDistance y con Saturate." />
+
+<Figure src={profundidad} alt="La laguna en blanco y negro: blanco junto a las paredes y los objetos, negro en lo hondo." caption="Fase 1: solo la profundidad, con TopColor en blanco y BottomColor en negro." />
+
+Ese valor se usa tres veces: para el color, para frenar la refracción en la orilla y, con otra distancia, para la espuma.
+
+## Color en HSV
+
+Con la profundidad se mezcla de `TopColor` (agua baja) a `BottomColor` (agua honda). La mezcla no es un `Lerp` normal: es una Custom Function, `HSVLerp.hlsl`, que pasa los dos colores a HSV, interpola tono, saturación y valor, y vuelve a RGB. El tono gira por el camino más corto del círculo:
+
+```hlsl
+half d = B.x - A.x;
+if (A.x > B.x)
+{
+    half temp = B.x;
+    B.x = A.x;
+    A.x = temp;
+    d = -d;
+    T = 1 - T;
+}
+if (d > 0.5)
+{
+    A.x = A.x + 1;
+    hue = (A.x + T * (B.x - A.x)) % 1;
+}
+if (d <= 0.5) hue = A.x + T * d;
+```
+
+Un `Lerp` en RGB entre dos colores saturados pasa por un centro más gris; en HSV la saturación se mantiene. El alfa se interpola aparte, con la `T` original, porque el alfa decide más adelante cuánto se ve del fondo.
+
+<Figure src={colorSuave} alt="La laguna con el color por profundidad en degradado suave, de turquesa en la orilla a azul en lo hondo." caption="Fase 2: color por profundidad, en degradado suave." />
+
+<Figure src={hsvRgb} alt="Tres pares de franjas de degradado. En cada par, la de arriba mezcla en RGB y la de abajo en HSV." caption="Arriba de cada par, Lerp en RGB; abajo, HSVLerp. Laguna, pantano y un par extremo, de amarillo a azul, donde el tono gira por el camino corto." />
+
+## Suave o en bandas
+
+Un keyword de tipo enum, `Fade Method`, elige entre `Smooth` y `Steps`. En `Steps` la profundidad pasa antes por un Posterize con `ColorSteps` escalones (`floor(x × steps) / steps`), y el color sale en franjas como curvas de nivel. Al ser keyword, cada material usa una variante compilada solo con su método, sin una rama dentro del shader.
+
+<Figure src={grafoWaterColor} zoom alt="Shader Graph: el grupo Water Color, con Posterize, el keyword Fade Method y la Custom Function HSVLerp." caption="Grupo Water Color: Posterize con ColorSteps, el keyword Fade Method y la Custom Function HSVLerp entre TopColor y BottomColor." />
+
+<Figure src={bandas} alt="La laguna con el color en franjas: seis escalones de turquesa a azul." caption="Fase 3: el mismo color en seis bandas." />
+
+## Refracción con Scene Color
+
+El agua no usa el alfa del material para ser transparente: su alfa es 1 y lo que hay debajo lo dibuja ella misma con el nodo Scene Color, que lee la Opaque Texture. Así puede deformar el fondo.
+
+La deformación sale de una sola textura de normales leída dos veces. Las dos lecturas pasan por `SbG_TextureMovement`, que escala el UV con `RefractionScale` y lo desplaza con `Time × Speed`, una con `RefractionSpeed` y otra con su negativo. Las dos normales se cruzan y se combinan con Normal Blend; Normal Strength las ajusta y el resultado se multiplica por `RefractionStrength × 0.2` y por la profundidad. Ese último factor apaga la refracción donde el agua toca algo, para que la orilla y los objetos no se deformen en el borde. El vector se suma a la posición en pantalla y con ese UV se lee el Scene Color.
+
+<Figure src={grafoTextureMovement} zoom alt="Shader Graph: el Sub Graph SbG_TextureMovement, con Time, Multiply y Tiling And Offset." caption="SbG_TextureMovement: Tiling And Offset sobre el UV0, con la escala como tiling y Time × Speed como offset." />
+
+<Figure src={grafoDistortedNormals} zoom alt="Shader Graph: el grupo Distorted Normals, de dos lecturas de la textura de normales al nodo Scene Color." caption="Grupo Distorted Normals: dos lecturas de la textura de normales en sentidos opuestos, Normal Blend, Normal Strength, la fuerza por 0.2 y por la profundidad, y el Scene Color." />
+
+Al final, un `Lerp` mezcla ese fondo deformado con el color del agua según su alfa. El `TopColor` de la laguna tiene alfa 0.11 y el `BottomColor` 0.74: en la orilla se ve casi solo el fondo, y en lo hondo, casi solo el color.
+
+<Figure src={refraccion} still={refraccionStill} alt="La laguna con la refracción: el fondo, las rocas y los pilares se ondulan bajo el agua." caption="Fase 4: la refracción en movimiento." />
+
+## Espuma
+
+La espuma vuelve a usar `SbG_DepthFade`, ahora con `FoamAmount` como distancia, que es más corta. El resultado por `FoamCutoff` es el umbral de un Step contra un Gradient Noise que se desplaza con `SbG_TextureMovement` (`FoamScale`, `FoamSpeed`). Donde el agua toca algo el umbral es 0 y todo el ruido pasa: espuma sólida. Al alejarse, el umbral sube y solo pasan los picos del ruido: espuma rota. Con un `FoamCutoff` mayor que 1, más lejos ya no pasa nada.
+
+<Figure src={grafoFoam} zoom alt="Shader Graph: el grupo Foam, con SbG_DepthFade, Gradient Noise, Step y el alfa de FoamColor." caption="Grupo Foam: SbG_DepthFade con FoamAmount, el umbral por FoamCutoff, el Step contra el Gradient Noise y el alfa de FoamColor." />
+
+La máscara se multiplica por el alfa de `FoamColor` y mezcla el agua hacia ese color. Como el alfa también viaja en esa mezcla, la espuma es opaca aunque el agua de la orilla casi no tenga color.
+
+<Figure src={grafoComposicion} zoom alt="Shader Graph: dos nodos Lerp y un Split que componen el color final del agua." caption="La composición final: un Lerp lleva el agua hacia FoamColor; el canal A del resultado es la T del Lerp que lo pone sobre el Scene Color deformado." />
+
+<Figure src={espuma} still={espumaStill} alt="La laguna con espuma blanca en la orilla de la playa y alrededor de las rocas y los pilares." caption="Fase 5: la espuma, en la orilla y alrededor de cada objeto." />
+
+## Olas en los vértices
+
+`SbG_WavesMoment` mueve los vértices en object space. A la altura le suma una senoidal que avanza con el tiempo y depende de la posición en X. En el grafo principal recibe tres propiedades y su salida va directo a Position del vertex.
+
+<Figure src={grafoWavesNodo} zoom alt="Shader Graph: el nodo SbG_WavesMoment con las propiedades WaveAmplitude, HighFrequency y WavesSpeed." caption="SbG_WavesMoment en el grafo principal." />
+
+Escrito en HLSL, el Sub Graph equivale a esta línea:
+
+```hlsl
+y += sin(_Time.y * WavesSpeed + x * HighFrequency * 6) * WaveAmplitude;
+```
+
+<Figure src={grafoWavesMoment} zoom alt="Shader Graph: el Sub Graph SbG_WavesMoment, de Position y Time a un Combine con la nueva altura." caption="SbG_WavesMoment: Time × WavesSpeed más X × HighFrequency × 6, el Sine, por WaveAmplitude, y la suma a Y antes del Combine." />
+
+Las olas viajan solo en X, y su resolución depende del mesh: la laguna es una rejilla de 151 × 151 vértices sobre 30 m, uno cada 20 cm. Como la profundidad se calcula por píxel con la superficie ya desplazada, las bandas y la línea de espuma suben y bajan con cada ola sin código extra.
+
+<Figure src={olas} still={olasStill} alt="Vista baja de la laguna: la línea del agua sube y baja contra los pilares y la boya." caption="Fase 6: las olas, vistas de cerca. La amplitud de la laguna es de 7 cm." />
+
+## Presets
+
+Con el mismo shader salen cuatro aguas que solo cambian valores del material: la laguna de las capturas anteriores y tres albercas, tropical, toon y pantano.
+
+<Figure src={variantes} still={variantesStill} alt="Tres albercas con el mismo shader: tropical, toon en bandas azules y pantano verde oscuro." caption="De izquierda a derecha: tropical, toon y pantano." />
+
+| preset | método | `DepthFadeDistance` | `ColorSteps` | `RefractionStrength` | espuma (`FoamAmount` · `FoamCutoff` · `FoamScale`) | olas (`WaveAmplitude` · `HighFrequency` · `WavesSpeed`) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Laguna | Steps | 6.38 | 6 | 0.15 | 0.5 · 1.04 · 198.9 | 0.07 · 0.28 · 1.2 |
+| Toon | Steps | 2.6 | 4 | 0.03 | 0.55 · 0.97 · 24 | 0.04 · 0.6 · 1.5 |
+| Tropical | Smooth | 1.6 | — | 0.12 | 0.3 · 0.985 · 30 | 0.04 · 0.6 · 1.5 |
+| Pantano | Smooth | 0.9 | — | 0.06 | 0.25 · 0.975 · 18 | 0.02 · 0.4 · 0.5 |
+
+Los colores van en pares de `TopColor` a `BottomColor`, con su alfa: laguna `#4DF2E0` (0.11) a `#005C9E` (0.74), toon `#8CEBFF` (0.55) a `#144DB3` (1), tropical `#59F5D9` (0.2) a `#008CB3` (0.85) y pantano `#738C40` (0.55) a `#1F3314` (0.97). El pantano además tiñe la espuma de verde, `#BFCC8C`, con alfa 0.9.

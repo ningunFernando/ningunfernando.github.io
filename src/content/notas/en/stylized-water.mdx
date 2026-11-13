@@ -1,0 +1,145 @@
+---
+title: "Stylized water: depth, bands, refraction and foam"
+description: "How the toon water I made in 2025 in Shader Graph is built: everything comes from scene depth, from the banded color to the foam, and vertex waves set it in motion."
+date: 2026-11-12
+section: shading
+piece: stylized-water
+tags: [unity, urp, shader graph, hlsl]
+---
+
+import Figure from '../../../components/Figure.astro';
+import grafoDepthFade from '../../piezas/stylized-water/grafos/depth-fade.png';
+import grafoWaterColor from '../../piezas/stylized-water/grafos/water-color.png';
+import grafoTextureMovement from '../../piezas/stylized-water/grafos/texture-movement.png';
+import grafoDistortedNormals from '../../piezas/stylized-water/grafos/distorted-normals.png';
+import grafoFoam from '../../piezas/stylized-water/grafos/foam.png';
+import grafoComposicion from '../../piezas/stylized-water/grafos/composicion.png';
+import grafoWavesNodo from '../../piezas/stylized-water/grafos/waves-nodo.png';
+import grafoWavesMoment from '../../piezas/stylized-water/grafos/waves-moment.png';
+import final from '../../piezas/stylized-water/final.gif';
+import finalStill from '../../piezas/stylized-water/final.jpg';
+import profundidad from '../../piezas/stylized-water/profundidad.jpg';
+import colorSuave from '../../piezas/stylized-water/color-suave.jpg';
+import hsvRgb from '../../piezas/stylized-water/hsv-vs-rgb.png';
+import bandas from '../../piezas/stylized-water/bandas.jpg';
+import refraccion from '../../piezas/stylized-water/refraccion.gif';
+import refraccionStill from '../../piezas/stylized-water/refraccion.jpg';
+import espuma from '../../piezas/stylized-water/espuma.gif';
+import espumaStill from '../../piezas/stylized-water/espuma.jpg';
+import olas from '../../piezas/stylized-water/olas.gif';
+import olasStill from '../../piezas/stylized-water/olas.jpg';
+import variantes from '../../piezas/stylized-water/variantes.gif';
+import variantesStill from '../../piezas/stylized-water/variantes.jpg';
+
+## Goal
+
+A toon water for URP built in a single Shader Graph, `SG_StylizedWater`, with three Sub Graphs: `SbG_DepthFade`, `SbG_TextureMovement` and `SbG_WavesMoment`. Color, transparency, foam and refraction strength all come from one value: how much water there is between the surface and whatever lies beneath it.
+
+<Figure src={final} still={finalStill} alt="The lagoon with the full water effect: color bands, refraction, shoreline foam and waves." caption="The result, with the lagoon material." />
+
+The graph is Unlit and Transparent, casts no shadows and needs the Depth Texture and the Opaque Texture enabled on the URP Asset. Every phase capture comes from the same scene and the same material, with whatever hasn't been explained yet turned off: foam alpha at 0, refraction and waves at 0.
+
+## Depth as the base
+
+`SbG_DepthFade` subtracts two depths. The Scene Depth node, in Eye mode, gives the distance from the camera to the opaque surface behind the water. Screen Position in Raw mode carries in its `w` channel the distance from the camera to the water surface. The difference is the water thickness along the view ray; divided by `DepthFadeDistance` and saturated, it is 0 where the water touches something and 1 from that distance on.
+
+<Figure src={grafoDepthFade} zoom alt="Shader Graph: the SbG_DepthFade Sub Graph, from Scene Depth and Screen Position to FadedDistance." caption="SbG_DepthFade: Scene Depth (Eye) minus the A channel of Screen Position (Raw), divided by DepthFadeDistance and saturated." />
+
+<Figure src={profundidad} alt="The lagoon in black and white: white next to the walls and objects, black in the deep parts." caption="Phase 1: depth only, with TopColor set to white and BottomColor to black." />
+
+That value is used three times: for the color, to hold back refraction at the shoreline and, with another distance, for the foam.
+
+## Color in HSV
+
+Depth blends from `TopColor` (shallow water) to `BottomColor` (deep water). The blend is not a plain `Lerp`: it is a Custom Function, `HSVLerp.hlsl`, that converts both colors to HSV, interpolates hue, saturation and value, and converts back to RGB. The hue takes the short way around the color wheel:
+
+```hlsl
+half d = B.x - A.x;
+if (A.x > B.x)
+{
+    half temp = B.x;
+    B.x = A.x;
+    A.x = temp;
+    d = -d;
+    T = 1 - T;
+}
+if (d > 0.5)
+{
+    A.x = A.x + 1;
+    hue = (A.x + T * (B.x - A.x)) % 1;
+}
+if (d <= 0.5) hue = A.x + T * d;
+```
+
+An RGB `Lerp` between two saturated colors passes through a grayer middle; in HSV the saturation holds. Alpha is interpolated separately, with the original `T`, because alpha later decides how much of the background shows through.
+
+<Figure src={colorSuave} alt="The lagoon with depth color as a smooth gradient, from turquoise at the shore to blue in the deep parts." caption="Phase 2: depth color as a smooth gradient." />
+
+<Figure src={hsvRgb} alt="Three pairs of gradient strips. In each pair, the top one blends in RGB and the bottom one in HSV." caption="Top of each pair, RGB Lerp; bottom, HSVLerp. Lagoon, swamp and an extreme pair, yellow to blue, where the hue takes the short way around." />
+
+## Smooth or banded
+
+An enum keyword, `Fade Method`, picks between `Smooth` and `Steps`. With `Steps`, depth first goes through a Posterize with `ColorSteps` steps (`floor(x × steps) / steps`), and the color comes out in stripes like contour lines. Since it is a keyword, each material uses a variant compiled with only its method, with no branch inside the shader.
+
+<Figure src={grafoWaterColor} zoom alt="Shader Graph: the Water Color group, with Posterize, the Fade Method keyword and the HSVLerp Custom Function." caption="Water Color group: Posterize by ColorSteps, the Fade Method keyword and the HSVLerp Custom Function between TopColor and BottomColor." />
+
+<Figure src={bandas} alt="The lagoon with banded color: six steps from turquoise to blue." caption="Phase 3: the same color in six bands." />
+
+## Refraction with Scene Color
+
+The water doesn't rely on material alpha to be transparent: its alpha is 1, and it draws what's underneath itself with the Scene Color node, which reads the Opaque Texture. That's what lets it distort the background.
+
+The distortion comes from a single normal texture sampled twice. Both samples go through `SbG_TextureMovement`, which scales the UV by `RefractionScale` and offsets it by `Time × Speed`, one with `RefractionSpeed` and the other with its negative. The two normals cross and are combined with Normal Blend; Normal Strength adjusts them, and the result is multiplied by `RefractionStrength × 0.2` and by depth. That last factor turns refraction off where the water touches something, so the shoreline and the objects don't warp at the edge. The vector is added to the screen position, and that UV samples the Scene Color.
+
+<Figure src={grafoTextureMovement} zoom alt="Shader Graph: the SbG_TextureMovement Sub Graph, with Time, Multiply and Tiling And Offset." caption="SbG_TextureMovement: Tiling And Offset on UV0, with the scale as tiling and Time × Speed as offset." />
+
+<Figure src={grafoDistortedNormals} zoom alt="Shader Graph: the Distorted Normals group, from two samples of the normal texture to the Scene Color node." caption="Distorted Normals group: two samples of the normal texture moving in opposite directions, Normal Blend, Normal Strength, the strength times 0.2 and times depth, and the Scene Color." />
+
+At the end, a `Lerp` blends that distorted background with the water color by its alpha. The lagoon's `TopColor` has an alpha of 0.11 and its `BottomColor` 0.74: at the shore you see almost only the background, and in the deep parts almost only the color.
+
+<Figure src={refraccion} still={refraccionStill} alt="The lagoon with refraction: the floor, the rocks and the pillars ripple under the water." caption="Phase 4: refraction in motion." />
+
+## Foam
+
+Foam reuses `SbG_DepthFade`, this time with `FoamAmount` as the distance, which is shorter. The result times `FoamCutoff` is the edge of a Step against a Gradient Noise that scrolls through `SbG_TextureMovement` (`FoamScale`, `FoamSpeed`). Where the water touches something the edge is 0 and all of the noise passes: solid foam. Further out the edge rises and only the noise peaks pass: broken foam. With a `FoamCutoff` above 1, nothing passes beyond that.
+
+<Figure src={grafoFoam} zoom alt="Shader Graph: the Foam group, with SbG_DepthFade, Gradient Noise, Step and the FoamColor alpha." caption="Foam group: SbG_DepthFade with FoamAmount, the edge times FoamCutoff, the Step against the Gradient Noise and the FoamColor alpha." />
+
+The mask is multiplied by the alpha of `FoamColor` and blends the water toward that color. Since alpha also rides along in that blend, the foam is opaque even where the shoreline water has almost no color.
+
+<Figure src={grafoComposicion} zoom alt="Shader Graph: two Lerp nodes and a Split that compose the final water color." caption="Final composition: one Lerp takes the water toward FoamColor; the A channel of the result is the T of the Lerp that places it over the distorted Scene Color." />
+
+<Figure src={espuma} still={espumaStill} alt="The lagoon with white foam along the beach and around the rocks and pillars." caption="Phase 5: foam, along the shore and around every object." />
+
+## Vertex waves
+
+`SbG_WavesMoment` moves the vertices in object space. It adds to the height a sine that advances with time and depends on the X position. In the main graph it takes three properties and its output goes straight into the vertex Position.
+
+<Figure src={grafoWavesNodo} zoom alt="Shader Graph: the SbG_WavesMoment node with the WaveAmplitude, HighFrequency and WavesSpeed properties." caption="SbG_WavesMoment in the main graph." />
+
+Written in HLSL, the Sub Graph comes down to this line:
+
+```hlsl
+y += sin(_Time.y * WavesSpeed + x * HighFrequency * 6) * WaveAmplitude;
+```
+
+<Figure src={grafoWavesMoment} zoom alt="Shader Graph: the SbG_WavesMoment Sub Graph, from Position and Time to a Combine with the new height." caption="SbG_WavesMoment: Time × WavesSpeed plus X × HighFrequency × 6, the Sine, times WaveAmplitude, added to Y before the Combine." />
+
+The waves only travel along X, and their resolution depends on the mesh: the lagoon is a 151 × 151 vertex grid over 30 m, one vertex every 20 cm. Since depth is computed per pixel with the surface already displaced, the bands and the foam line rise and fall with each wave at no extra cost.
+
+<Figure src={olas} still={olasStill} alt="Low view of the lagoon: the waterline rises and falls against the pillars and the buoy." caption="Phase 6: the waves, up close. The lagoon's amplitude is 7 cm." />
+
+## Presets
+
+The same shader drives four waters that only change material values: the lagoon from the earlier captures and three pools, tropical, toon and swamp.
+
+<Figure src={variantes} still={variantesStill} alt="Three pools with the same shader: tropical, toon with blue bands, and a dark green swamp." caption="Left to right: tropical, toon and swamp." />
+
+| preset | method | `DepthFadeDistance` | `ColorSteps` | `RefractionStrength` | foam (`FoamAmount` · `FoamCutoff` · `FoamScale`) | waves (`WaveAmplitude` · `HighFrequency` · `WavesSpeed`) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Lagoon | Steps | 6.38 | 6 | 0.15 | 0.5 · 1.04 · 198.9 | 0.07 · 0.28 · 1.2 |
+| Toon | Steps | 2.6 | 4 | 0.03 | 0.55 · 0.97 · 24 | 0.04 · 0.6 · 1.5 |
+| Tropical | Smooth | 1.6 | — | 0.12 | 0.3 · 0.985 · 30 | 0.04 · 0.6 · 1.5 |
+| Swamp | Smooth | 0.9 | — | 0.06 | 0.25 · 0.975 · 18 | 0.02 · 0.4 · 0.5 |
+
+Colors come in `TopColor` to `BottomColor` pairs, with their alpha: lagoon `#4DF2E0` (0.11) to `#005C9E` (0.74), toon `#8CEBFF` (0.55) to `#144DB3` (1), tropical `#59F5D9` (0.2) to `#008CB3` (0.85) and swamp `#738C40` (0.55) to `#1F3314` (0.97). The swamp also tints its foam green, `#BFCC8C`, with an alpha of 0.9.

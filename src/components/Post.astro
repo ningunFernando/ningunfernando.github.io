@@ -223,9 +223,13 @@ const notice = note.fallback
         outline-offset: 2px;
     }
 
+    /* Una tabla más ancha que la columna se desplaza dentro de sí misma, no mueve la página. */
     .prose :global(table) {
+        display: block;
         width: 100%;
+        max-width: 100%;
         margin: 1.5rem 0;
+        overflow-x: auto;
         border-collapse: collapse;
     }
 

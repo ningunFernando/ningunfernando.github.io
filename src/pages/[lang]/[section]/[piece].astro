@@ -4,6 +4,7 @@ import Glass from "../../../components/Glass.astro";
 import Tag from "../../../components/Tag.astro";
 import Button from "../../../components/Button.astro";
 import ShaderViewer from "../../../components/ShaderViewer.astro";
+import Figure from "../../../components/Figure.astro";
 import { useTranslations } from "../../../i18n/ui.js";
 import { getPiecePaths, parseId } from "../../../lib/pieces.js";
 import { getBreakdown, noteUrl } from "../../../lib/notes.js";
@@ -21,6 +22,8 @@ const sectionName = t(`section.${section.id}`);
 const sectionHref = `/${lang}/${section.slug[lang]}`;
 const chips = [data.engine, data.year, data.role].filter(Boolean);
 const breakdown = await getBreakdown(lang, parseId(entry.id).slug);
+// Sin visor, arriba va el primer medio de la pieza (una captura o un GIF).
+const lead = !data.viewer ? data.media[0] : null;
 ---
 
 <Base title={`${data.title} - ningunfernando`}>
@@ -45,6 +48,13 @@ const breakdown = await getBreakdown(lang, parseId(entry.id).slug);
                     <div class="view">
                         <ShaderViewer shader={data.viewer} label={t("viewer.label")} />
                         <p class="note">{t("piece.viewerNote")}</p>
+                    </div>
+                )
+            }
+            {
+                lead && (
+                    <div class="view">
+                        <Figure src={lead.src} still={lead.still} alt={lead.alt} eager />
                     </div>
                 )
             }
@@ -175,6 +185,11 @@ const breakdown = await getBreakdown(lang, parseId(entry.id).slug);
         margin: 1.25rem 0 0;
         font-family: var(--mono);
         color: var(--c);
+    }
+
+    /* La figura de arriba se alinea con el título, sin el margen que lleva dentro de un post. */
+    .view :global(.figure) {
+        margin: 0;
     }
 
     .note {

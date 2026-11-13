@@ -20,7 +20,11 @@ const piezas = defineCollection({
       result: z.string(),
       metric: z.string().optional(), // la cifra, cuando exista
       cover: image().optional(), // miniatura de la lista
-      media: z.array(z.object({ src: image(), alt: z.string() })).default([]),
+      // Capturas o GIFs. Un GIF lleva `still`, un cuadro fijo que se muestra con movimiento reducido.
+      // Sin visor, el primero va arriba en la página de la pieza.
+      media: z
+        .array(z.object({ src: image(), alt: z.string(), still: image().optional() }))
+        .default([]),
       viewer: z.string().optional(), // nombre de un visor de src/scripts/viewer-params.js
       links: z.array(z.object({ label: z.string(), href: z.url() })).default([]),
       order: z.number().default(0),
