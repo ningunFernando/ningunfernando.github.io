@@ -4,6 +4,9 @@ import mdx from "@astrojs/mdx";
 
 // https://astro.build/config
 export default defineConfig({
+    // Dirección pública del sitio (GitHub Pages, repo ningunfernando.github.io). También activa el RSS.
+    // Con un dominio propio, se cambia aquí.
+    site: "https://ningunfernando.github.io",
     // Notas y breakdowns en MDX: Markdown que admite componentes (visor, figuras de nodos).
     integrations: [mdx()],
     // Código resaltado en los posts. El fondo lo pone el CSS del post.
