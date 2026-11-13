@@ -1,6 +1,6 @@
 ---
 title: Gastos de obra Kuchen
-section: tools
+section: otros
 summary: App web para Kuchen Construcciones que controla el gasto de cada obra contra su presupuesto por concepto. El almacén captura cada factura desde el celular y la oficina ve las cifras al día.
 tags: [nuxt, vue, supabase, drizzle]
 engine: Nuxt 4 · Supabase

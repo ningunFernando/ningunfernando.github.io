@@ -1,6 +1,6 @@
 ---
 title: Kuchen construction expenses
-section: tools
+section: otros
 summary: A web app for Kuchen Construcciones that tracks what each construction job spends against its budget by line item. The warehouse logs every invoice from a phone and the office sees up-to-date figures.
 tags: [nuxt, vue, supabase, drizzle]
 engine: Nuxt 4 · Supabase
