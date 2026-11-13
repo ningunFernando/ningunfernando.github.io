@@ -1,5 +1,5 @@
 import vertSrc from '../shaders/mask.vert?raw'
-import { createProgram } from './gl.js';
+import { createProgramAsync } from './gl.js';
 
 // Todos los fragment shaders de visores, por nombre de archivo: toon.frag → "toon".
 const shaders = import.meta.glob('../shaders/viewers/*.frag', { query: '?raw', import: 'default', eager: true });
@@ -10,8 +10,9 @@ const IDLE = 2500; // milisegundos sin mover el cursor antes de que la luz siga 
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
-// Arma un visor y devuelve la función que lo desarma.
-function mount(viewer) {
+// Arma un visor y devuelve (en una promesa, porque el shader se compila sin bloquear la página)
+// la función que lo desarma.
+async function mount(viewer) {
   const canvas = viewer.querySelector('canvas');
   const fragSrc = shaders[`../shaders/viewers/${viewer.dataset.shader}.frag`];
   const gl = canvas.getContext('webgl2', { antialias: false, powerPreference: 'low-power' });
@@ -20,7 +21,8 @@ function mount(viewer) {
     return null;
   }
 
-  const program = createProgram(gl, vertSrc, fragSrc);
+  const program = await createProgramAsync(gl, vertSrc, fragSrc);
+  if (!program) return null;
   const uResolution = gl.getUniformLocation(program, 'u_resolution');
   const uTime = gl.getUniformLocation(program, 'u_time');
   const uMouse = gl.getUniformLocation(program, 'u_mouse');
@@ -136,10 +138,34 @@ function mount(viewer) {
 }
 
 // Igual que la intro: se arma en cada página que tenga visores y se desarma antes de salir.
+// Cada visor se arma cuando está por entrar en pantalla (200 px antes), no al cargar la página:
+// así no le quita tiempo a la carga ni gasta GPU en visores que nadie ha visto.
 function setup() {
-  const destroy = [...document.querySelectorAll('.viewer')].map(mount).filter(Boolean);
-  if (!destroy.length) return;
-  document.addEventListener('astro:before-swap', () => destroy.forEach((fn) => fn()), { once: true });
+  const viewers = [...document.querySelectorAll('.viewer')];
+  if (!viewers.length) return;
+
+  const destroy = [];
+  let left = false;
+
+  const lazy = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      lazy.unobserve(entry.target);
+      mount(entry.target).then((fn) => {
+        if (!fn) return;
+        // Si se salió de la página mientras compilaba, se desarma en cuanto termina.
+        if (left) fn();
+        else destroy.push(fn);
+      });
+    }
+  }, { rootMargin: '200px 0px' });
+  viewers.forEach((viewer) => lazy.observe(viewer));
+
+  document.addEventListener('astro:before-swap', () => {
+    left = true;
+    lazy.disconnect();
+    destroy.forEach((fn) => fn());
+  }, { once: true });
 }
 
 document.addEventListener('astro:page-load', setup);

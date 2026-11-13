@@ -1,6 +1,6 @@
 import vertSrc from '../shaders/mask.vert?raw'
 import fragSrc from '../shaders/field.frag?raw'
-import { createProgram, tokenColor } from './gl.js';
+import { createProgramAsync, tokenColor } from './gl.js';
 import { findSection } from '../i18n/routes.js';
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -18,7 +18,7 @@ function colorFor(target, base) {
 
 // Con ClientRouter este archivo se ejecuta una sola vez, pero la intro se vuelve a montar
 // cada vez que se llega al inicio: por eso todo se arma en astro:page-load y se desarma antes de salir.
-function setup() {
+async function setup() {
   const intro = document.querySelector('.intro');
   if (!intro) return;
 
@@ -26,8 +26,17 @@ function setup() {
   const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'low-power' });
   if (!gl) return; // sin WebGL2 queda el fondo oscuro con el nombre
 
+  // El shader se compila sin bloquear la página (en la primera visita, mientras corre la carga).
+  // Si se sale del inicio antes de que termine, ya no se arma nada y se libera el contexto.
+  let left = false;
+  document.addEventListener('astro:before-swap', () => { left = true; }, { once: true });
+
   // El vertex shader es el mismo triángulo que cubre la pantalla en la máscara.
-  const program = createProgram(gl, vertSrc, fragSrc);
+  const program = await createProgramAsync(gl, vertSrc, fragSrc);
+  if (!program || left) {
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return;
+  }
   const uResolution = gl.getUniformLocation(program, 'u_resolution');
   const uTime = gl.getUniformLocation(program, 'u_time');
   const uMouse = gl.getUniformLocation(program, 'u_mouse');

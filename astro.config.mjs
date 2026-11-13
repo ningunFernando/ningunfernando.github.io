@@ -12,6 +12,8 @@ export default defineConfig({
             theme: "github-dark-default",
         },
     },
+    // Fuentes recortadas a latín (español, inglés y los signos y flechas que usa el sitio) y en WOFF.
+    // Los TTF completos están en el kit de marca; cómo se regeneran, en docs/portafolio-web.md.
     fonts: [
         {
             provider: fontProviders.local(),
@@ -21,7 +23,7 @@ export default defineConfig({
             options: {
                 variants: [
                     {
-                        src: ["./src/assets/fonts/SpaceGrotesk-VF.ttf"],
+                        src: ["./src/assets/fonts/SpaceGrotesk-VF.woff"],
                         weight: "300 700",
                         style: "normal",
                     },
@@ -36,7 +38,7 @@ export default defineConfig({
             options: {
                 variants: [
                     {
-                        src: ["./src/assets/fonts/JetBrainsMono-VF.ttf"],
+                        src: ["./src/assets/fonts/JetBrainsMono-VF.woff"],
                         weight: "100 800",
                         style: "normal",
                     },

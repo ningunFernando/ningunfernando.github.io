@@ -42,7 +42,9 @@ body::after{
     inset: 0;
     z-index: var(--z-grain);
     pointer-events: none;
-    background: url("/grano-512.png");
+    /* Tesela de 256 px con los mismos píxeles que grano-512.png del kit (blanco y negro con
+       transparencia, en 16 niveles): pesa 39 KB en lugar de 370 y a esta opacidad no se distingue. */
+    background: url("/grano-256.webp");
     opacity: var(--grain-opacity);
 }
 
